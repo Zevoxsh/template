@@ -1,6 +1,6 @@
-.PHONY: dev install db-up db-down db-reset db-migrate db-seed build prod-up prod-down
+.PHONY: dev start install db-up db-down db-reset db-migrate db-seed build prod-up prod-down
 
-# ── Développement sans Docker ──────────────────────────────────────────────
+# ── Développement (hot-reload, lent sur serveur) ──────────────────────────
 dev:
 	make db-up
 	@echo "Waiting for PostgreSQL..."
@@ -9,6 +9,17 @@ dev:
 	@trap 'kill 0' SIGINT; \
 		(cd backend && npm run dev) & \
 		(cd frontend && npm run dev) & \
+		wait
+
+# ── Production locale (rapide, build précompilé) ──────────────────────────
+start:
+	make db-up
+	@sleep 3
+	cd backend && npx prisma migrate deploy
+	cd frontend && npm run build
+	@trap 'kill 0' SIGINT; \
+		(cd backend && npm run start) & \
+		(cd frontend && npm run start) & \
 		wait
 
 # ── Démarrage uniquement la DB (dev local) ────────────────────────────────
