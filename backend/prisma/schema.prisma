@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  password      String
+  role          Role     @default(USER)
+  emailVerified Boolean  @default(false)
+  banned        Boolean  @default(false)
+  bannedReason  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tokens        Token[]
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+model Token {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      TokenType
+  token     String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  REFRESH
+}
+
+model SiteSettings {
+  id                       String   @id @default("singleton")
+  siteName                 String   @default("My App")
+  siteDescription          String   @default("Welcome to My App")
+  registrationEnabled      Boolean  @default(true)
+  requireEmailVerification Boolean  @default(true)
+  maintenanceMode          Boolean  @default(false)
+  updatedAt                DateTime @updatedAt
+}
