@@ -4,8 +4,8 @@
 dev:
 	make db-up
 	@echo "Waiting for PostgreSQL..."
-	@sleep 2
-	cd backend && npm run db:migrate && cd ..
+	@sleep 3
+	cd backend && npx prisma migrate deploy
 	@trap 'kill 0' SIGINT; \
 		(cd backend && npm run dev) & \
 		(cd frontend && npm run dev) & \
