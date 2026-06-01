@@ -40,17 +40,16 @@ export function Navbar() {
 
       {/* Desktop nav */}
       <nav className="hidden md:flex items-center gap-1 flex-1">
-        {navLinks.map(({ href, label, admin }) => (
+        {navLinks.map(({ href, label }) => (
           <Link
             key={href}
             href={href}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-              (href === "/admin" ? pathname.startsWith("/admin") : pathname === href)
+            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+              pathname === href
                 ? "bg-slate-100 text-slate-900 font-medium"
                 : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
             }`}
           >
-            {admin && <Shield className="h-3.5 w-3.5" />}
             {label}
           </Link>
         ))}
