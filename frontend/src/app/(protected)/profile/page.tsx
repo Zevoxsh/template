@@ -181,10 +181,6 @@ export default function ProfilePage() {
     <div className="flex-1 bg-slate-50">
       {/* Page header */}
       <div className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          <h1 className="text-xl font-bold text-slate-900">Mon profil</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Gérez vos informations personnelles et la sécurité de votre compte</p>
-        </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -258,14 +254,6 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
-            </div>
-
-            {/* Security tip */}
-            <div className="bg-indigo-50 rounded-2xl border border-indigo-100 p-4">
-              <p className="text-xs font-semibold text-indigo-700 mb-1">Conseil sécurité</p>
-              <p className="text-xs text-indigo-600 leading-relaxed">
-                Utilisez un mot de passe unique d'au moins 12 caractères incluant majuscules, chiffres et symboles.
-              </p>
             </div>
 
             {avatarErr && (
