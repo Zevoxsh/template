@@ -50,7 +50,7 @@ export default function AdminUsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Utilisateurs</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{data?.total ?? 0} compte(s) au total</p>
+          <p className="text-xs text-slate-400 mt-0.5">{data?.total ?? 0} compte(s) au total</p>
         </div>
       </div>
 

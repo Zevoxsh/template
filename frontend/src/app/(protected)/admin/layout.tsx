@@ -41,7 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </button>
             <span className="text-sm font-medium text-slate-700">Administration</span>
           </div>
-          <div className="px-6 py-6 max-w-5xl">{children}</div>
+          <div className="px-5 sm:px-8 py-6">{children}</div>
         </main>
     </div>
   );

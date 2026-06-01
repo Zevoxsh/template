@@ -105,18 +105,18 @@ export default function AuthConfigPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-5 max-w-xl">
       <div>
         <h1 className="text-xl font-bold text-slate-900">Authentification</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Configurez les méthodes de connexion</p>
+        <p className="text-xs text-slate-400 mt-0.5">Configurez les méthodes de connexion disponibles</p>
       </div>
 
       <StatusMsg msg={msg} />
 
       {/* OAuth Providers */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <p className="text-sm font-semibold text-slate-800">SSO / OAuth2</p>
+        <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">SSO / OAuth2</p>
           <div className="flex items-center gap-2">
             {PRESETS.filter((p) => !providers.find((pr) => pr.name === p)).map((p) => (
               <button key={p} onClick={() => addPreset(p)}
@@ -192,7 +192,7 @@ export default function AuthConfigPage() {
       {/* LDAP */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <button
-          className="w-full flex items-center justify-between px-5 py-4 border-b border-slate-100 hover:bg-slate-50 transition-colors"
+          className="w-full flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition-colors"
           onClick={() => setOpenPanel(openPanel === "ldap" ? null : "ldap")}
         >
           <div className="flex items-center gap-3">
