@@ -95,6 +95,7 @@ export default function ProfilePage() {
   const [connections, setConnections] = useState<{ provider: string }[]>([]);
   const [availableProviders, setAvailableProviders] = useState<{ name: string; displayName: string }[]>([]);
 
+  const [avatarErr, setAvatarErr] = useState<string | null>(null);
   const [nameMsg, setNameMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [emailMsg, setEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [pwMsg, setPwMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -115,19 +116,34 @@ export default function ProfilePage() {
   const emailForm = useForm<EmailData>({ resolver: zodResolver(emailSchema), defaultValues: { email: user?.email ?? "" } });
   const pwForm = useForm<PasswordData>({ resolver: zodResolver(passwordSchema) });
 
+  // Pre-fill forms once user data is loaded from the auth context
+  useEffect(() => {
+    if (!user) return;
+    nameForm.reset({ name: user.name });
+    emailForm.reset({ email: user.email });
+  }, [user?.id]);
+
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarPreview(URL.createObjectURL(file));
+    setAvatarErr(null);
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("avatar", file);
       const res = await fetch("/api/user/avatar", { method: "POST", body: fd, credentials: "include" });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message ?? `Erreur ${res.status}`);
+      }
       await refresh();
-    } catch { setAvatarPreview(null); }
-    finally { setUploading(false); }
+      setAvatarPreview(null);
+    } catch (e: any) {
+      setAvatarPreview(null);
+      setAvatarErr(e.message ?? "Échec de l'upload");
+      setTimeout(() => setAvatarErr(null), 4000);
+    } finally { setUploading(false); }
   };
 
   const avatar = avatarPreview ?? user?.avatarUrl;
@@ -252,6 +268,11 @@ export default function ProfilePage() {
               </p>
             </div>
 
+            {avatarErr && (
+              <div className="px-5 pb-4 -mt-2">
+                <Toast type="error" msg={avatarErr} />
+              </div>
+            )}
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
           </div>
 
