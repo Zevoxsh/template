@@ -24,8 +24,15 @@ model User {
   twoFactorMethod   String?
   twoFactorSecret   String?
   backupCodes       String[]
+  // Onboarding
+  onboardingDone    Boolean  @default(false)
+  // Notification preferences (JSON: { marketing, security, updates })
+  notifPrefs        Json     @default("{\"security\":true,\"updates\":true,\"marketing\":false}")
+  // Inactivity timeout override (null = use global setting)
+  inactivityTimeout Int?
   tokens            Token[]
   oauthAccounts     OAuthAccount[]
+  notifications     Notification[]
 }
 
 enum Role {
@@ -42,6 +49,10 @@ model Token {
   token     String    @unique
   expiresAt DateTime
   createdAt DateTime  @default(now())
+  // Session metadata (for REFRESH tokens)
+  userAgent String?
+  ipAddress String?
+  lastUsed  DateTime?
 }
 
 enum TokenType {
@@ -61,12 +72,20 @@ model SiteSettings {
   maintenanceMode          Boolean  @default(false)
   twoFactorPolicy          String   @default("OPTIONAL")
   twoFactorAllowedMethods  String[] @default(["totp", "email"])
+  // Inactivity timeout in minutes (0 = disabled)
+  inactivityTimeout        Int      @default(0)
+  // Global announcement banner
+  announcementEnabled      Boolean  @default(false)
+  announcementText         String   @default("")
+  announcementType         String   @default("info")
+  // Email templates (JSON keyed by template name)
+  emailTemplates           Json     @default("{}")
   updatedAt                DateTime @updatedAt
 }
 
 model OAuthProvider {
   id           String   @id @default(cuid())
-  name         String   @unique  // google, github, discord, microsoft, custom
+  name         String   @unique
   displayName  String
   enabled      Boolean  @default(false)
   clientId     String   @default("")
@@ -111,4 +130,40 @@ model RolePermission {
   createdAt   DateTime @default(now())
 
   @@unique([role, permission])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  action     String
+  targetType String?
+  targetId   String?
+  targetName String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}
+
+model RateLimitBlock {
+  id          String   @id @default(cuid())
+  ipAddress   String
+  route       String
+  attempts    Int      @default(1)
+  blockedAt   DateTime @default(now())
+  unblockedAt DateTime?
+
+  @@unique([ipAddress, route])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

@@ -7,6 +7,8 @@ import { useState, useRef, useEffect } from "react";
 import { useAuthContext } from "@/context/auth-context";
 import { useSite } from "@/context/site-context";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { NotificationBell } from "@/components/ui/notification-bell";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function Navbar() {
   const { user, logout } = useAuthContext();
@@ -59,6 +61,9 @@ export function Navbar() {
       </nav>
 
       <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <NotificationBell />
+
         {/* Desktop user menu */}
         <div className="hidden md:block relative" ref={dropRef}>
           <button

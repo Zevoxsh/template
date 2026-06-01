@@ -7,6 +7,10 @@ import { validate } from "../middleware/validate.middleware";
 import {
   getProfile, updateProfile, changePassword, changeEmail,
   uploadAvatar, deleteAvatar, unlinkOAuthAccount,
+  getSessions, revokeSession, revokeAllSessions,
+  deleteAccount, exportData,
+  getNotifPrefs, updateNotifPrefs, completeOnboarding,
+  getNotifications, markNotificationRead, markAllNotificationsRead,
 } from "../controllers/user.controller";
 import { updateProfileSchema, changePasswordSchema } from "../validations/auth.validation";
 import { z } from "zod";
@@ -42,5 +46,16 @@ router.put("/password", validate(changePasswordSchema), changePassword);
 router.post("/avatar", upload.single("avatar"), uploadAvatar);
 router.delete("/avatar", deleteAvatar);
 router.delete("/connections/:provider", unlinkOAuthAccount);
+router.get("/sessions", getSessions);
+router.delete("/sessions/:id", revokeSession);
+router.delete("/sessions", revokeAllSessions);
+router.delete("/account", deleteAccount);
+router.get("/export", exportData);
+router.get("/notif-prefs", getNotifPrefs);
+router.put("/notif-prefs", updateNotifPrefs);
+router.post("/onboarding/complete", completeOnboarding);
+router.get("/notifications", getNotifications);
+router.post("/notifications/:id/read", markNotificationRead);
+router.post("/notifications/read-all", markAllNotificationsRead);
 
 export default router;

@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { SiteSettings } from "@/types";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/admin/page-header";
-import { Mail, ShieldCheck } from "lucide-react";
+import { Mail, Megaphone, Timer } from "lucide-react";
 
 function Row({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
   return (
@@ -143,63 +143,60 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* 2FA Policy */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden lg:col-span-2">
+        {/* Annonce globale */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
-            <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Double authentification (2FA)</p>
+            <Megaphone className="h-3.5 w-3.5 text-slate-400" />
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Annonce globale</p>
           </div>
-          <div className="px-5 py-2">
-            <Row
-              label="Politique 2FA"
-              description="Définit si les utilisateurs doivent activer la 2FA"
-            >
-              <select
-                value={form.twoFactorPolicy ?? "OPTIONAL"}
-                onChange={(e) => setForm((f) => ({ ...f, twoFactorPolicy: e.target.value as any }))}
-                className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-              >
-                <option value="DISABLED">Désactivée — personne ne peut activer la 2FA</option>
-                <option value="OPTIONAL">Optionnelle — les utilisateurs choisissent</option>
-                <option value="REQUIRED">Obligatoire — requise pour tous les comptes</option>
-              </select>
+          <div className="px-5">
+            <Row label="Activer l'annonce" description="Afficher un banner pour tous les utilisateurs">
+              <Toggle checked={form.announcementEnabled ?? false} onChange={(v) => setForm((f) => ({ ...f, announcementEnabled: v }))} />
             </Row>
-
-            {form.twoFactorPolicy !== "DISABLED" && (
-              <Row
-                label="Méthodes autorisées"
-                description="Méthodes 2FA disponibles pour les utilisateurs"
+            <Field label="Message">
+              <input
+                type="text"
+                value={form.announcementText ?? ""}
+                onChange={(e) => setForm((f) => ({ ...f, announcementText: e.target.value }))}
+                placeholder="Maintenance prévue le…"
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </Field>
+            <Field label="Type">
+              <select
+                value={form.announcementType ?? "info"}
+                onChange={(e) => setForm((f) => ({ ...f, announcementType: e.target.value as any }))}
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
               >
-                <div className="flex flex-wrap gap-3">
-                  {(["totp", "email"] as const).map((method) => {
-                    const checked = (form.twoFactorAllowedMethods ?? ["totp", "email"]).includes(method);
-                    return (
-                      <label key={method} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            const current = form.twoFactorAllowedMethods ?? ["totp", "email"];
-                            setForm((f) => ({
-                              ...f,
-                              twoFactorAllowedMethods: e.target.checked
-                                ? [...current, method]
-                                : current.filter((m) => m !== method),
-                            }));
-                          }}
-                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="text-sm text-slate-700">
-                          {method === "totp" ? "Application TOTP (Authenticator)" : "Email OTP"}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </Row>
-            )}
+                <option value="info">Info (bleu)</option>
+                <option value="warning">Avertissement (amber)</option>
+                <option value="success">Succès (vert)</option>
+                <option value="error">Erreur (rouge)</option>
+              </select>
+            </Field>
           </div>
         </div>
+
+        {/* Délai d'inactivité */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-fit">
+          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
+            <Timer className="h-3.5 w-3.5 text-slate-400" />
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Délai d'inactivité</p>
+          </div>
+          <div className="px-5">
+            <Row label="Timeout (minutes)" description="Déconnexion automatique. 0 = désactivé.">
+              <input
+                type="number"
+                min={0}
+                max={480}
+                value={form.inactivityTimeout ?? 0}
+                onChange={(e) => setForm((f) => ({ ...f, inactivityTimeout: parseInt(e.target.value) || 0 }))}
+                className="w-24 text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
+              />
+            </Row>
+          </div>
+        </div>
+
       </div>
     </div>
   );

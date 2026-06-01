@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/admin/page-header";
-import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Trash2, ShieldCheck } from "lucide-react";
 
 interface OAuthProvider {
   id: string; name: string; displayName: string; enabled: boolean;
@@ -50,6 +50,9 @@ export default function AuthConfigPage() {
     enabled: false, host: "", port: 389, bindDn: "", bindPassword: "",
     searchBase: "", searchFilter: "(uid={{username}})", useTls: false,
   });
+  const [twoFaPolicy, setTwoFaPolicy] = useState<"DISABLED" | "OPTIONAL" | "REQUIRED">("OPTIONAL");
+  const [twoFaMethods, setTwoFaMethods] = useState<("totp" | "email")[]>(["totp", "email"]);
+  const [twoFaSaving, setTwoFaSaving] = useState(false);
   const [openPanel, setOpenPanel] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [newProviderName, setNewProviderName] = useState("");
@@ -57,9 +60,25 @@ export default function AuthConfigPage() {
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    const data = await api.admin.getAuthConfig();
-    setProviders(data.oauthProviders);
-    if (data.ldap) setLdap(data.ldap);
+    const [authData, settingsData] = await Promise.all([
+      api.admin.getAuthConfig(),
+      api.admin.getSettings(),
+    ]);
+    setProviders(authData.oauthProviders);
+    if (authData.ldap) setLdap(authData.ldap);
+    if (settingsData.settings) {
+      setTwoFaPolicy(settingsData.settings.twoFactorPolicy ?? "OPTIONAL");
+      setTwoFaMethods(settingsData.settings.twoFactorAllowedMethods ?? ["totp", "email"]);
+    }
+  };
+
+  const saveTwoFa = async () => {
+    setTwoFaSaving(true);
+    try {
+      await api.admin.updateSettings({ twoFactorPolicy: twoFaPolicy, twoFactorAllowedMethods: twoFaMethods });
+      flash("Paramètres 2FA sauvegardés.");
+    } catch (e: any) { flash(e.message, "error"); }
+    finally { setTwoFaSaving(false); }
   };
 
   const flash = (text: string, type: "success" | "error" = "success") => {
@@ -227,6 +246,74 @@ export default function AuthConfigPage() {
             </div>
           </div>
         )}
+      </section>
+      {/* 2FA */}
+      <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden lg:col-span-2">
+        <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
+          <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Double authentification (2FA)</p>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          {/* Policy */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="sm:w-64 shrink-0">
+              <p className="text-sm font-medium text-slate-800">Politique 2FA</p>
+              <p className="text-xs text-slate-400 mt-0.5">Niveau d'obligation pour les utilisateurs</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              {(["DISABLED", "OPTIONAL", "REQUIRED"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setTwoFaPolicy(p)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    twoFaPolicy === p
+                      ? p === "REQUIRED" ? "bg-indigo-600 text-white border-indigo-600"
+                        : p === "DISABLED" ? "bg-slate-700 text-white border-slate-700"
+                        : "bg-white text-indigo-600 border-indigo-300"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  {p === "DISABLED" ? "Désactivée" : p === "OPTIONAL" ? "Optionnelle" : "Obligatoire"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Methods */}
+          {twoFaPolicy !== "DISABLED" && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="sm:w-64 shrink-0">
+                <p className="text-sm font-medium text-slate-800">Méthodes autorisées</p>
+                <p className="text-xs text-slate-400 mt-0.5">Méthodes disponibles pour les utilisateurs</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {(["totp", "email"] as const).map((m) => {
+                  const checked = twoFaMethods.includes(m);
+                  return (
+                    <label key={m} className="flex items-center gap-2.5 cursor-pointer px-4 py-2 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => setTwoFaMethods(prev =>
+                          e.target.checked ? [...prev, m] : prev.filter(x => x !== m)
+                        )}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm text-slate-700">
+                        {m === "totp" ? "Application TOTP (Authenticator)" : "Email OTP"}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="pt-1 border-t border-slate-100 flex justify-end">
+            <Button size="sm" onClick={saveTwoFa} loading={twoFaSaving}>Sauvegarder</Button>
+          </div>
+        </div>
       </section>
       </div>
     </div>

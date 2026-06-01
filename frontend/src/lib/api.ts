@@ -84,6 +84,39 @@ class ApiClient {
 
     unlinkConnection: (provider: string) =>
       this.request<{ message: string }>(`/user/connections/${provider}`, { method: "DELETE" }),
+
+    getSessions: () =>
+      this.request<{ sessions: import("@/types").Session[] }>("/user/sessions"),
+
+    revokeSession: (id: string) =>
+      this.request<{ message: string }>(`/user/sessions/${id}`, { method: "DELETE" }),
+
+    revokeAllSessions: () =>
+      this.request<{ message: string }>("/user/sessions", { method: "DELETE" }),
+
+    deleteAccount: (password: string) =>
+      this.request<{ message: string }>("/user/account", { method: "DELETE", body: JSON.stringify({ password }) }),
+
+    exportData: () =>
+      fetch("/api/user/export", { credentials: "include" }).then(r => r.blob()),
+
+    getNotifPrefs: () =>
+      this.request<{ notifPrefs: { security: boolean; updates: boolean; marketing: boolean } }>("/user/notif-prefs"),
+
+    updateNotifPrefs: (prefs: { security: boolean; updates: boolean; marketing: boolean }) =>
+      this.request<{ notifPrefs: any }>("/user/notif-prefs", { method: "PUT", body: JSON.stringify(prefs) }),
+
+    completeOnboarding: () =>
+      this.request<{ message: string }>("/user/onboarding/complete", { method: "POST" }),
+
+    getNotifications: (unreadOnly = false) =>
+      this.request<{ notifications: import("@/types").Notification[] }>(`/user/notifications${unreadOnly ? "?unread=true" : ""}`),
+
+    markNotificationRead: (id: string) =>
+      this.request<{ message: string }>(`/user/notifications/${id}/read`, { method: "POST" }),
+
+    markAllNotificationsRead: () =>
+      this.request<{ message: string }>("/user/notifications/read-all", { method: "POST" }),
   };
 
   // Admin
@@ -121,6 +154,32 @@ class ApiClient {
 
     resetUserAvatar: (id: string) =>
       this.request<{ user: import("@/types").User }>(`/admin/users/${id}/reset-avatar`, { method: "POST" }),
+
+    bulkAction: (action: string, userIds: string[], data?: object) =>
+      this.request<{ message: string }>("/admin/users/bulk", { method: "POST", body: JSON.stringify({ action, userIds, ...data }) }),
+
+    getAuditLogs: (params?: { page?: number; action?: string; actorId?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.page) q.set("page", String(params.page));
+      if (params?.action) q.set("action", params.action);
+      if (params?.actorId) q.set("actorId", params.actorId);
+      return this.request<{ logs: import("@/types").AuditLog[]; total: number; page: number; totalPages: number }>(`/admin/audit-logs?${q}`);
+    },
+
+    getDetailedStats: (days = 30) =>
+      this.request<any>(`/admin/stats?days=${days}`),
+
+    exportUsersCsv: () =>
+      fetch("/api/admin/users/export/csv", { credentials: "include" }).then(r => r.blob()),
+
+    getRateLimitBlocks: () =>
+      this.request<{ blocks: import("@/types").RateLimitBlock[] }>("/admin/rate-limits"),
+
+    unblockIp: (id: string) =>
+      this.request<{ message: string }>(`/admin/rate-limits/${id}/unblock`, { method: "POST" }),
+
+    broadcastNotification: (body: { title: string; body: string; link?: string; type?: string }) =>
+      this.request<{ message: string }>("/admin/notifications/broadcast", { method: "POST", body: JSON.stringify(body) }),
 
     getSettings: () =>
       this.request<{ settings: import("@/types").SiteSettings }>("/admin/settings"),

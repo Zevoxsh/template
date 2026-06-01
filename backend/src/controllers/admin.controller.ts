@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { Response, NextFunction } from "express";
+import { audit } from "../lib/audit";
 import { prisma } from "../lib/prisma";
 import { hashPassword } from "../lib/password";
 import { sendPasswordResetEmail, sendVerificationEmail } from "../lib/mail";
@@ -112,6 +113,13 @@ export async function updateUser(req: AuthRequest, res: Response, next: NextFunc
         emailVerified: true, banned: true, bannedReason: true,
       },
     });
+
+    const changes: string[] = [];
+    if (role !== undefined) changes.push(`role→${role}`);
+    if (banned === true) changes.push("banned");
+    if (banned === false) changes.push("unbanned");
+    if (emailVerified !== undefined) changes.push(`emailVerified→${emailVerified}`);
+    audit({ actorId: req.user!.id, actorEmail: req.user!.email, action: "ADMIN_UPDATE_USER", targetType: "user", targetId: user.id, targetName: user.email, metadata: { changes } });
 
     res.json({ user });
   } catch (err) {
@@ -235,6 +243,146 @@ export async function sendEmailVerification(req: AuthRequest, res: Response, nex
   } catch (err) {
     next(err);
   }
+}
+
+// ─── Bulk actions ─────────────────────────────────────────────────────────────
+export async function bulkAction(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { action, userIds, role, bannedReason } = req.body;
+    if (!Array.isArray(userIds) || userIds.length === 0) throw new AppError(400, "userIds requis");
+
+    switch (action) {
+      case "ban":
+        await prisma.user.updateMany({ where: { id: { in: userIds } }, data: { banned: true, bannedReason: bannedReason ?? null } });
+        break;
+      case "unban":
+        await prisma.user.updateMany({ where: { id: { in: userIds } }, data: { banned: false, bannedReason: null } });
+        break;
+      case "delete":
+        await prisma.user.deleteMany({ where: { id: { in: userIds }, NOT: { id: req.user!.id } } });
+        break;
+      case "set-role":
+        if (!role) throw new AppError(400, "role requis");
+        await prisma.user.updateMany({ where: { id: { in: userIds } }, data: { role } });
+        break;
+      case "verify-email":
+        await prisma.user.updateMany({ where: { id: { in: userIds } }, data: { emailVerified: true } });
+        break;
+      default:
+        throw new AppError(400, `Action inconnue: ${action}`);
+    }
+
+    audit({ actorId: req.user!.id, actorEmail: req.user!.email, action: `ADMIN_BULK_${action.toUpperCase()}`, metadata: { count: userIds.length } });
+    res.json({ message: `Action "${action}" appliquée à ${userIds.length} utilisateur(s)` });
+  } catch (err) { next(err); }
+}
+
+// ─── Audit logs ───────────────────────────────────────────────────────────────
+export async function getAuditLogs(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
+    const action = req.query.action as string | undefined;
+    const actorId = req.query.actorId as string | undefined;
+
+    const where = {
+      ...(action && { action: { contains: action, mode: "insensitive" as const } }),
+      ...(actorId && { actorId }),
+    };
+
+    const [logs, total] = await Promise.all([
+      prisma.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * limit, take: limit }),
+      prisma.auditLog.count({ where }),
+    ]);
+    res.json({ logs, total, page, totalPages: Math.ceil(total / limit) });
+  } catch (err) { next(err); }
+}
+
+// ─── Stats (time-series) ───────────────────────────────────────────────────────
+export async function getDetailedStats(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const days = parseInt(req.query.days as string) || 30;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const [signupsRaw, loginsRaw, totalUsers, bannedUsers, unverifiedUsers, recentUsers] = await Promise.all([
+      prisma.user.groupBy({ by: ["createdAt"], where: { createdAt: { gte: since } }, _count: true, orderBy: { createdAt: "asc" } }),
+      prisma.auditLog.groupBy({ by: ["createdAt"], where: { action: "LOGIN", createdAt: { gte: since } }, _count: true, orderBy: { createdAt: "asc" } }),
+      prisma.user.count(),
+      prisma.user.count({ where: { banned: true } }),
+      prisma.user.count({ where: { emailVerified: false } }),
+      prisma.user.findMany({ orderBy: { createdAt: "desc" }, take: 5, select: { id: true, name: true, email: true, role: true, avatarUrl: true, createdAt: true } }),
+    ]);
+
+    const toDaily = (rows: { createdAt: Date; _count: number }[]) => {
+      const map: Record<string, number> = {};
+      for (const r of rows) {
+        const day = r.createdAt.toISOString().slice(0, 10);
+        map[day] = (map[day] ?? 0) + r._count;
+      }
+      const result = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        result.push({ date: d, count: map[d] ?? 0 });
+      }
+      return result;
+    };
+
+    res.json({
+      totalUsers, bannedUsers, unverifiedUsers, recentUsers,
+      totalAdmins: await prisma.user.count({ where: { role: "ADMIN" } }),
+      totalModerators: await prisma.user.count({ where: { role: "MODERATOR" } }),
+      signups: toDaily(signupsRaw.map(r => ({ createdAt: r.createdAt, _count: r._count }))),
+      logins: toDaily(loginsRaw.map(r => ({ createdAt: r.createdAt, _count: r._count }))),
+    });
+  } catch (err) { next(err); }
+}
+
+// ─── CSV export ────────────────────────────────────────────────────────────────
+export async function exportUsersCsv(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true, email: true, role: true, emailVerified: true, banned: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+    });
+    const header = "id,name,email,role,emailVerified,banned,createdAt";
+    const rows = users.map(u =>
+      [u.id, `"${u.name.replace(/"/g, '""')}"`, u.email, u.role, u.emailVerified, u.banned, u.createdAt.toISOString()].join(",")
+    );
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="users-${Date.now()}.csv"`);
+    res.send([header, ...rows].join("\n"));
+  } catch (err) { next(err); }
+}
+
+// ─── Rate limit blocks ─────────────────────────────────────────────────────────
+export async function getRateLimitBlocks(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const blocks = await prisma.rateLimitBlock.findMany({ orderBy: { blockedAt: "desc" }, take: 100 });
+    res.json({ blocks });
+  } catch (err) { next(err); }
+}
+
+export async function unblockIp(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const blockId = String(req.params.id);
+    await prisma.rateLimitBlock.update({ where: { id: blockId }, data: { unblockedAt: new Date(), attempts: 0 } });
+    audit({ actorId: req.user!.id, actorEmail: req.user!.email, action: "ADMIN_UNBLOCK_IP", metadata: { id: blockId } });
+    res.json({ message: "IP débloquée" });
+  } catch (err) { next(err); }
+}
+
+// ─── Notifications ─────────────────────────────────────────────────────────────
+export async function broadcastNotification(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { title, body, link, type } = req.body;
+    if (!title || !body) throw new AppError(400, "title et body requis");
+    const users = await prisma.user.findMany({ select: { id: true } });
+    await prisma.notification.createMany({
+      data: users.map(u => ({ userId: u.id, type: type ?? "admin", title, body, link: link ?? null })),
+    });
+    audit({ actorId: req.user!.id, actorEmail: req.user!.email, action: "ADMIN_BROADCAST_NOTIFICATION", metadata: { title } });
+    res.json({ message: `Notification envoyée à ${users.length} utilisateurs` });
+  } catch (err) { next(err); }
 }
 
 export async function updateSettings(req: AuthRequest, res: Response, next: NextFunction) {

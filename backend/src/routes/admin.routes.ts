@@ -6,6 +6,8 @@ import {
   getStats, listUsers, getUser, updateUser, deleteUser,
   createUser, sendPasswordReset, sendEmailVerification,
   getSettings, updateSettings, resetUserAvatar,
+  getAuditLogs, getDetailedStats, exportUsersCsv,
+  getRateLimitBlocks, unblockIp, broadcastNotification, bulkAction,
 } from "../controllers/admin.controller";
 import { testSmtp } from "../lib/mail";
 import { updateUserSchema, updateSettingsSchema } from "../validations/admin.validation";
@@ -14,7 +16,14 @@ const router = Router();
 
 router.use(authenticate, requireRole("ADMIN"));
 
-router.get("/stats", getStats);
+router.get("/stats", getDetailedStats);
+router.get("/stats/legacy", getStats);
+router.get("/audit-logs", getAuditLogs);
+router.get("/users/export/csv", exportUsersCsv);
+router.post("/users/bulk", bulkAction);
+router.get("/rate-limits", getRateLimitBlocks);
+router.post("/rate-limits/:id/unblock", unblockIp);
+router.post("/notifications/broadcast", broadcastNotification);
 router.get("/users", listUsers);
 router.post("/users", createUser);
 router.get("/users/:id", getUser);

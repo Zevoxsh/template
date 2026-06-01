@@ -8,6 +8,7 @@ import { AppError } from "../middleware/error.middleware";
 import { AuthRequest } from "../types";
 import { TokenType } from "@prisma/client";
 import { config } from "../config";
+import { audit } from "../lib/audit";
 
 const IS_PROD = config.nodeEnv === "production";
 
@@ -18,7 +19,7 @@ const COOKIE_OPTS = {
   path: "/",
 };
 
-async function issueTokens(res: Response, userId: string, email: string, role: string, name: string) {
+async function issueTokens(res: Response, userId: string, email: string, role: string, name: string, req?: Request) {
   const accessToken = signAccessToken({ sub: userId, email, role, name });
   const refreshToken = signRefreshToken(userId);
 
@@ -28,6 +29,9 @@ async function issueTokens(res: Response, userId: string, email: string, role: s
       type: TokenType.REFRESH,
       token: refreshToken,
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      userAgent: req?.headers["user-agent"] ?? null,
+      ipAddress: (Array.isArray(req?.headers["x-forwarded-for"]) ? req!.headers["x-forwarded-for"][0] : req?.headers["x-forwarded-for"] as string | undefined)?.split(",")[0] ?? req?.socket.remoteAddress ?? null,
+      lastUsed: new Date(),
     },
   });
 
@@ -66,7 +70,7 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       res.status(201).json({ message: "Account created. Please verify your email." });
     } else {
       await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } });
-      await issueTokens(res, user.id, user.email, user.role, user.name);
+      await issueTokens(res, user.id, user.email, user.role, user.name, req as Request);
       res.status(201).json({ message: "Account created successfully." });
     }
   } catch (err) {
@@ -120,7 +124,8 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       });
     }
 
-    await issueTokens(res, user.id, user.email, user.role, user.name);
+    await issueTokens(res, user.id, user.email, user.role, user.name, req as Request);
+    audit({ actorId: user.id, actorEmail: user.email, action: "LOGIN", ipAddress: (req.headers["x-forwarded-for"] as string)?.split(",")[0] ?? req.socket.remoteAddress });
     res.json({
       user: { id: user.id, name: user.name, email: user.email, role: user.role, emailVerified: user.emailVerified },
     });

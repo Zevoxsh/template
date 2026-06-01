@@ -12,6 +12,7 @@ import rolesRoutes from "./routes/roles.routes";
 import oauthRoutes from "./routes/oauth.routes";
 import authConfigRoutes from "./routes/auth-config.routes";
 import { errorHandler } from "./middleware/error.middleware";
+import { authLimiter, apiLimiter } from "./middleware/rateLimit.middleware";
 
 const app = express();
 
@@ -28,9 +29,18 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 app.get("/api/settings", async (_req, res) => {
   const s = await (await import("./lib/prisma")).prisma.siteSettings.findUnique({ where: { id: "singleton" } });
-  res.json({ siteName: s?.siteName ?? "MyApp", siteDescription: s?.siteDescription ?? "" });
+  res.json({
+    siteName: s?.siteName ?? "MyApp",
+    siteDescription: s?.siteDescription ?? "",
+    announcementEnabled: s?.announcementEnabled ?? false,
+    announcementText: s?.announcementText ?? "",
+    announcementType: s?.announcementType ?? "info",
+    inactivityTimeout: s?.inactivityTimeout ?? 0,
+  });
 });
 
+app.use("/api", apiLimiter);
+app.use("/api/auth", authLimiter);
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", twoFactorRoutes);
 app.use("/api/auth", oauthRoutes);

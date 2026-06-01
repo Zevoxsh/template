@@ -68,6 +68,9 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
         type: TokenType.REFRESH,
         token: newRefreshToken,
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        userAgent: stored.userAgent,
+        ipAddress: stored.ipAddress,
+        lastUsed: new Date(),
       },
     });
 

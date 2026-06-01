@@ -14,7 +14,10 @@ import {
   Camera, Check, Link2, Link2Off, ShieldCheck,
   User, Lock, KeyRound, AlertCircle, CalendarDays,
   Smartphone, Mail as MailIcon, Shield, Copy, RefreshCw,
+  MonitorSmartphone, Bell, AlertTriangle,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Session } from "@/types";
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 const nameSchema = z.object({ name: z.string().min(2, "Min. 2 caractères") });
@@ -91,11 +94,28 @@ function SectionHeader({ icon: Icon, title, description }: { icon: React.Element
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { user, refresh } = useAuthContext();
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [connections, setConnections] = useState<{ provider: string }[]>([]);
   const [availableProviders, setAvailableProviders] = useState<{ name: string; displayName: string }[]>([]);
+
+  // Sessions
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionMsg, setSessionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Notif prefs
+  const [notifPrefs, setNotifPrefs] = useState<{ security: boolean; updates: boolean; marketing: boolean }>({
+    security: true, updates: true, marketing: false,
+  });
+
+  // Danger zone
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteErr, setDeleteErr] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [avatarErr, setAvatarErr] = useState<string | null>(null);
   const [nameMsg, setNameMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -122,7 +142,53 @@ export default function ProfilePage() {
     api.user.getProfile().then(({ oauthAccounts }) => setConnections(oauthAccounts ?? []));
     fetch("/api/auth/providers").then(r => r.json())
       .then(d => setAvailableProviders(d.oauth ?? [])).catch(() => {});
+    loadSessions();
+    api.user.getNotifPrefs().then(({ notifPrefs: p }) => setNotifPrefs(p)).catch(() => {});
   }, []);
+
+  const loadSessions = async () => {
+    setSessionsLoading(true);
+    try { const { sessions: s } = await api.user.getSessions(); setSessions(s); }
+    catch (e: any) { flash(setSessionMsg, "error", e.message); }
+    finally { setSessionsLoading(false); }
+  };
+
+  const revokeSession = async (id: string) => {
+    try { await api.user.revokeSession(id); loadSessions(); flash(setSessionMsg, "success", "Session révoquée"); }
+    catch (e: any) { flash(setSessionMsg, "error", e.message); }
+  };
+
+  const revokeAllSessions = async () => {
+    try { await api.user.revokeAllSessions(); loadSessions(); flash(setSessionMsg, "success", "Sessions révoquées"); }
+    catch (e: any) { flash(setSessionMsg, "error", e.message); }
+  };
+
+  const toggleNotif = async (key: keyof typeof notifPrefs) => {
+    const next = { ...notifPrefs, [key]: !notifPrefs[key] };
+    setNotifPrefs(next);
+    try { await api.user.updateNotifPrefs(next); }
+    catch { setNotifPrefs(notifPrefs); }
+  };
+
+  const exportData = async () => {
+    try {
+      const blob = await api.user.exportData();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "mes-donnees.json"; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) { setDeleteErr("Mot de passe requis"); return; }
+    setDeleteLoading(true); setDeleteErr("");
+    try {
+      await api.user.deleteAccount(deletePassword);
+      router.push("/login");
+    } catch (e: any) { setDeleteErr(e.message); }
+    finally { setDeleteLoading(false); }
+  };
 
   const nameForm = useForm<NameData>({ resolver: zodResolver(nameSchema), defaultValues: { name: user?.name ?? "" } });
   const emailForm = useForm<EmailData>({ resolver: zodResolver(emailSchema), defaultValues: { email: user?.email ?? "" } });
@@ -312,9 +378,16 @@ export default function ProfilePage() {
                     )}
                   </button>
 
-                  <span className={cn("text-xs font-semibold px-2.5 py-1 rounded-full", ROLE_COLORS[user?.role ?? "USER"])}>
-                    {ROLE_LABEL[user?.role ?? "USER"]}
-                  </span>
+                    <div className="flex items-center gap-2">
+                    <span className={cn("text-xs font-semibold px-2.5 py-1 rounded-full", ROLE_COLORS[user?.role ?? "USER"])}>
+                      {ROLE_LABEL[user?.role ?? "USER"]}
+                    </span>
+                    {user?.twoFactorEnabled && (
+                      <span className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700 ring-1 ring-green-200">
+                        <ShieldCheck className="h-3 w-3" />2FA
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <h2 className="text-lg font-bold text-slate-900 leading-tight">{user?.name}</h2>
@@ -618,7 +691,7 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Connected Accounts */}
+            {/* ── Connected Accounts ─────────────────────────────────────── */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
               <SectionHeader
                 icon={KeyRound}
@@ -678,9 +751,173 @@ export default function ProfilePage() {
                 })}
               </div>
             </div>
+            {/* ── Sessions actives ───────────────────────────────────────── */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+              <SectionHeader
+                icon={MonitorSmartphone}
+                title="Sessions actives"
+                description="Appareils et navigateurs connectés à votre compte"
+              />
+
+              {sessionMsg && <div className="mb-4"><Toast type={sessionMsg.type} msg={sessionMsg.text} /></div>}
+
+              {sessionsLoading ? (
+                <p className="text-sm text-slate-400">Chargement…</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {sessions.map(s => (
+                    <div key={s.id} className={cn(
+                      "flex items-center justify-between gap-3 p-3.5 rounded-xl border",
+                      s.isCurrent ? "border-green-100 bg-green-50/40" : "border-slate-100 bg-slate-50/30"
+                    )}>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-sm font-medium text-slate-800 truncate">
+                            {s.userAgent ? s.userAgent.slice(0, 50) : "Navigateur inconnu"}
+                          </p>
+                          {s.isCurrent && (
+                            <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                              Session actuelle
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400">
+                          {s.ipAddress ?? "IP inconnue"} · Dernière activité{" "}
+                          {s.lastUsed ? new Date(s.lastUsed).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—"}
+                        </p>
+                      </div>
+                      {!s.isCurrent && (
+                        <Button size="sm" variant="outline" onClick={() => revokeSession(s.id)}>
+                          Révoquer
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+
+                  {sessions.filter(s => !s.isCurrent).length > 0 && (
+                    <div className="pt-1">
+                      <Button size="sm" variant="outline" onClick={revokeAllSessions}>
+                        Révoquer toutes les autres sessions
+                      </Button>
+                    </div>
+                  )}
+
+                  {sessions.length === 0 && (
+                    <p className="text-sm text-slate-400">Aucune session trouvée.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ── Préférences de notification ────────────────────────────── */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+              <SectionHeader
+                icon={Bell}
+                title="Préférences de notification"
+                description="Choisissez les emails que vous souhaitez recevoir"
+              />
+
+              <div className="space-y-1">
+                {(
+                  [
+                    { key: "security" as const, label: "Sécurité", desc: "Connexions, changements de mot de passe, 2FA" },
+                    { key: "updates" as const, label: "Mises à jour", desc: "Nouveautés et annonces importantes" },
+                    { key: "marketing" as const, label: "Marketing", desc: "Offres, conseils et contenus promotionnels" },
+                  ]
+                ).map(({ key, label, desc }) => (
+                  <div key={key} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{label}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleNotif(key)}
+                      className={cn(
+                        "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                        notifPrefs[key] ? "bg-indigo-600" : "bg-slate-200"
+                      )}
+                    >
+                      <span className={cn(
+                        "inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform",
+                        notifPrefs[key] ? "translate-x-4" : "translate-x-0.5"
+                      )} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Danger Zone ────────────────────────────────────────────── */}
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+              <SectionHeader
+                icon={AlertTriangle}
+                title="Zone dangereuse"
+                description="Actions irréversibles sur votre compte"
+              />
+
+              <div className="space-y-5">
+                {/* Export */}
+                <div className="flex items-start justify-between gap-4 p-4 bg-white rounded-xl border border-red-100">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 mb-1">Exporter mes données</p>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Téléchargez une copie de toutes vos données conformément au RGPD.
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={exportData} className="shrink-0">
+                    Télécharger mes données (JSON)
+                  </Button>
+                </div>
+
+                {/* Delete */}
+                <div className="flex items-start justify-between gap-4 p-4 bg-white rounded-xl border border-red-100">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 mb-1">Supprimer mon compte</p>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Supprime définitivement votre compte et toutes vos données. Cette action est irréversible.
+                    </p>
+                  </div>
+                  <Button size="sm" variant="danger" onClick={() => setDeleteModal(true)} className="shrink-0">
+                    Supprimer mon compte
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Delete account modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => { setDeleteModal(false); setDeleteErr(""); setDeletePassword(""); }} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h2 className="text-lg font-bold text-slate-900 mb-1">Supprimer mon compte</h2>
+            <p className="text-sm text-slate-500 mb-5">
+              Cette action est <strong className="text-slate-700">irréversible</strong>. Confirmez avec votre mot de passe.
+            </p>
+            <div className="space-y-3">
+              <Input
+                label="Mot de passe"
+                type="password"
+                placeholder="••••••••"
+                value={deletePassword}
+                onChange={e => { setDeletePassword(e.target.value); setDeleteErr(""); }}
+              />
+              {deleteErr && <Toast type="error" msg={deleteErr} />}
+              <div className="flex gap-2 justify-end pt-1">
+                <Button variant="outline" size="sm" onClick={() => { setDeleteModal(false); setDeleteErr(""); setDeletePassword(""); }}>
+                  Annuler
+                </Button>
+                <Button variant="danger" size="sm" loading={deleteLoading} onClick={handleDeleteAccount}>
+                  Supprimer définitivement
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

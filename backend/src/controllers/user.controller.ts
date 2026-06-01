@@ -9,7 +9,8 @@ import { AuthRequest } from "../types";
 const SELECTS = {
   id: true, name: true, email: true, role: true,
   emailVerified: true, avatarUrl: true, avatarFlagged: true,
-  twoFactorEnabled: true, twoFactorMethod: true, createdAt: true,
+  twoFactorEnabled: true, twoFactorMethod: true,
+  onboardingDone: true, notifPrefs: true, createdAt: true,
 };
 
 export async function getProfile(req: AuthRequest, res: Response, next: NextFunction) {
@@ -115,6 +116,127 @@ export async function deleteAvatar(req: AuthRequest, res: Response, next: NextFu
       select: SELECTS,
     });
     res.json({ user });
+  } catch (err) { next(err); }
+}
+
+// ─── Sessions ────────────────────────────────────────────────────────────────
+export async function getSessions(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const currentRefresh = req.cookies?.refresh_token as string | undefined;
+    const sessions = await prisma.token.findMany({
+      where: { userId: req.user!.id, type: "REFRESH" },
+      select: { id: true, userAgent: true, ipAddress: true, lastUsed: true, createdAt: true, expiresAt: true, token: true },
+      orderBy: { lastUsed: "desc" },
+    });
+    res.json({ sessions: sessions.map(s => ({ ...s, isCurrent: s.token === currentRefresh, token: undefined })) });
+  } catch (err) { next(err); }
+}
+
+export async function revokeSession(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const id = String(req.params.id);
+    const session = await prisma.token.findUnique({ where: { id } });
+    if (!session || session.userId !== req.user!.id) throw new AppError(404, "Session introuvable");
+    await prisma.token.delete({ where: { id } });
+    res.json({ message: "Session révoquée" });
+  } catch (err) { next(err); }
+}
+
+export async function revokeAllSessions(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const currentRefresh = req.cookies?.refresh_token as string | undefined;
+    await prisma.token.deleteMany({
+      where: { userId: req.user!.id, type: "REFRESH", NOT: { token: currentRefresh } },
+    });
+    res.json({ message: "Toutes les autres sessions révoquées" });
+  } catch (err) { next(err); }
+}
+
+// ─── Account deletion ─────────────────────────────────────────────────────────
+export async function deleteAccount(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { password } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { password: true } });
+    if (!user) throw new AppError(404, "Utilisateur introuvable");
+    if (user.password && !(await comparePassword(password, user.password))) {
+      throw new AppError(400, "Mot de passe incorrect");
+    }
+    await prisma.user.delete({ where: { id: req.user!.id } });
+    const COOKIE_OPTS = { httpOnly: true, secure: false, sameSite: "lax" as const, path: "/" };
+    res.clearCookie("access_token", COOKIE_OPTS);
+    res.clearCookie("refresh_token", COOKIE_OPTS);
+    res.json({ message: "Compte supprimé" });
+  } catch (err) { next(err); }
+}
+
+// ─── Data export ──────────────────────────────────────────────────────────────
+export async function exportData(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: {
+        id: true, name: true, email: true, role: true, emailVerified: true,
+        createdAt: true, updatedAt: true, avatarUrl: true, notifPrefs: true,
+        oauthAccounts: { select: { provider: true, createdAt: true } },
+      },
+    });
+    res.setHeader("Content-Disposition", `attachment; filename="my-data-${Date.now()}.json"`);
+    res.json({ exportedAt: new Date(), user });
+  } catch (err) { next(err); }
+}
+
+// ─── Notification preferences ─────────────────────────────────────────────────
+export async function getNotifPrefs(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { notifPrefs: true } });
+    res.json({ notifPrefs: user?.notifPrefs ?? { security: true, updates: true, marketing: false } });
+  } catch (err) { next(err); }
+}
+
+export async function updateNotifPrefs(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { security, updates, marketing } = req.body;
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { notifPrefs: { security: !!security, updates: !!updates, marketing: !!marketing } },
+      select: { notifPrefs: true },
+    });
+    res.json({ notifPrefs: user.notifPrefs });
+  } catch (err) { next(err); }
+}
+
+// ─── Onboarding ───────────────────────────────────────────────────────────────
+export async function completeOnboarding(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    await prisma.user.update({ where: { id: req.user!.id }, data: { onboardingDone: true } });
+    res.json({ message: "ok" });
+  } catch (err) { next(err); }
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+export async function getNotifications(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const unreadOnly = req.query.unread === "true";
+    const notifications = await prisma.notification.findMany({
+      where: { userId: req.user!.id, ...(unreadOnly && { read: false }) },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    res.json({ notifications });
+  } catch (err) { next(err); }
+}
+
+export async function markNotificationRead(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    await prisma.notification.updateMany({ where: { id: String(req.params.id), userId: req.user!.id }, data: { read: true } });
+    res.json({ message: "ok" });
+  } catch (err) { next(err); }
+}
+
+export async function markAllNotificationsRead(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    await prisma.notification.updateMany({ where: { userId: req.user!.id, read: false }, data: { read: true } });
+    res.json({ message: "ok" });
   } catch (err) { next(err); }
 }
 
