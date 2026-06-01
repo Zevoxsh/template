@@ -67,12 +67,12 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
         userId: stored.user.id,
         type: TokenType.REFRESH,
         token: newRefreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },
     });
 
-    res.cookie("access_token", newAccessToken, { ...COOKIE_OPTS, maxAge: 15 * 60 * 1000 });
-    res.cookie("refresh_token", newRefreshToken, { ...COOKIE_OPTS, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie("access_token", newAccessToken, { ...COOKIE_OPTS, maxAge: 24 * 60 * 60 * 1000 });
+    res.cookie("refresh_token", newRefreshToken, { ...COOKIE_OPTS, maxAge: 30 * 24 * 60 * 60 * 1000 });
 
     req.user = {
       id: stored.user.id,

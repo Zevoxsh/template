@@ -14,8 +14,8 @@ export const config = {
   jwt: {
     accessSecret: required("JWT_ACCESS_SECRET"),
     refreshSecret: required("JWT_REFRESH_SECRET"),
-    accessExpiresIn: "15m",
-    refreshExpiresIn: "7d",
+    accessExpiresIn: "1d",
+    refreshExpiresIn: "30d",
   },
 
   mail: {

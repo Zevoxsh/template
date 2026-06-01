@@ -27,12 +27,12 @@ async function issueTokens(res: Response, userId: string, email: string, role: s
       userId,
       type: TokenType.REFRESH,
       token: refreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     },
   });
 
-  res.cookie("access_token", accessToken, { ...COOKIE_OPTS, maxAge: 15 * 60 * 1000 });
-  res.cookie("refresh_token", refreshToken, { ...COOKIE_OPTS, maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie("access_token", accessToken, { ...COOKIE_OPTS, maxAge: 24 * 60 * 60 * 1000 });
+  res.cookie("refresh_token", refreshToken, { ...COOKIE_OPTS, maxAge: 30 * 24 * 60 * 60 * 1000 });
 }
 
 export async function register(req: Request, res: Response, next: NextFunction) {
