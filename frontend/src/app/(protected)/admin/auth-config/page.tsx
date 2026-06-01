@@ -106,11 +106,12 @@ export default function AuthConfigPage() {
   };
 
   return (
-    <div className="space-y-5 max-w-xl">
+    <div className="space-y-5">
       <PageHeader title="Authentification" description="Configurez les méthodes de connexion disponibles" />
 
       <StatusMsg msg={msg} />
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {/* OAuth Providers */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
@@ -227,6 +228,7 @@ export default function AuthConfigPage() {
           </div>
         )}
       </section>
+      </div>
     </div>
   );
 }

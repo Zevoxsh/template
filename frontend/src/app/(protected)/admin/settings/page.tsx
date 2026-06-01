@@ -65,7 +65,7 @@ export default function AdminSettingsPage() {
   };
 
   return (
-    <div className="max-w-xl space-y-5">
+    <div className="space-y-5">
       <PageHeader
         title="Paramètres"
         description="Configuration globale de l'application"
@@ -78,46 +78,48 @@ export default function AdminSettingsPage() {
         }
       />
 
-      {/* Site info */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Informations du site</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Site info */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Informations du site</p>
+          </div>
+          <div className="px-5">
+            <Field label="Nom du site">
+              <input
+                type="text"
+                value={form.siteName ?? ""}
+                onChange={(e) => setForm((f) => ({ ...f, siteName: e.target.value }))}
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </Field>
+            <Field label="Description">
+              <textarea
+                value={form.siteDescription ?? ""}
+                onChange={(e) => setForm((f) => ({ ...f, siteDescription: e.target.value }))}
+                rows={3}
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              />
+            </Field>
+          </div>
         </div>
-        <div className="px-5">
-          <Field label="Nom du site">
-            <input
-              type="text"
-              value={form.siteName ?? ""}
-              onChange={(e) => setForm((f) => ({ ...f, siteName: e.target.value }))}
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </Field>
-          <Field label="Description">
-            <textarea
-              value={form.siteDescription ?? ""}
-              onChange={(e) => setForm((f) => ({ ...f, siteDescription: e.target.value }))}
-              rows={2}
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-            />
-          </Field>
-        </div>
-      </div>
 
-      {/* Options */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Options</p>
-        </div>
-        <div className="px-5">
-          <Row label="Inscriptions ouvertes" description="Autoriser les nouveaux comptes">
-            <Toggle checked={form.registrationEnabled ?? true} onChange={(v) => setForm((f) => ({ ...f, registrationEnabled: v }))} />
-          </Row>
-          <Row label="Vérification email" description="Email obligatoire avant connexion">
-            <Toggle checked={form.requireEmailVerification ?? true} onChange={(v) => setForm((f) => ({ ...f, requireEmailVerification: v }))} />
-          </Row>
-          <Row label="Mode maintenance" description="Bloquer l'accès aux non-admins">
-            <Toggle checked={form.maintenanceMode ?? false} onChange={(v) => setForm((f) => ({ ...f, maintenanceMode: v }))} />
-          </Row>
+        {/* Options */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-fit">
+          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Options</p>
+          </div>
+          <div className="px-5">
+            <Row label="Inscriptions ouvertes" description="Autoriser les nouveaux comptes">
+              <Toggle checked={form.registrationEnabled ?? true} onChange={(v) => setForm((f) => ({ ...f, registrationEnabled: v }))} />
+            </Row>
+            <Row label="Vérification email" description="Email obligatoire avant connexion">
+              <Toggle checked={form.requireEmailVerification ?? true} onChange={(v) => setForm((f) => ({ ...f, requireEmailVerification: v }))} />
+            </Row>
+            <Row label="Mode maintenance" description="Bloquer l'accès aux non-admins">
+              <Toggle checked={form.maintenanceMode ?? false} onChange={(v) => setForm((f) => ({ ...f, maintenanceMode: v }))} />
+            </Row>
+          </div>
         </div>
       </div>
     </div>
