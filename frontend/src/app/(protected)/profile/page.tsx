@@ -188,14 +188,9 @@ export default function ProfilePage() {
 
   // ─── 2FA handlers ────────────────────────────────────────────────────────
   useEffect(() => {
-    fetch("/api/settings").then(r => r.json())
-      .then(d => {}) // site name only, fetch 2fa policy separately
-      .catch(() => {});
-    fetch("/api/admin/settings", { credentials: "include" })
+    fetch("/api/auth/2fa/policy", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d?.settings) setTwoFaPolicy({ policy: d.settings.twoFactorPolicy, methods: d.settings.twoFactorAllowedMethods });
-      })
+      .then(d => { if (d) setTwoFaPolicy({ policy: d.policy, methods: d.methods }); })
       .catch(() => {});
   }, []);
 

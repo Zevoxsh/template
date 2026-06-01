@@ -8,7 +8,8 @@ import { AuthRequest } from "../types";
 
 const SELECTS = {
   id: true, name: true, email: true, role: true,
-  emailVerified: true, avatarUrl: true, avatarFlagged: true, createdAt: true,
+  emailVerified: true, avatarUrl: true, avatarFlagged: true,
+  twoFactorEnabled: true, twoFactorMethod: true, createdAt: true,
 };
 
 export async function getProfile(req: AuthRequest, res: Response, next: NextFunction) {
