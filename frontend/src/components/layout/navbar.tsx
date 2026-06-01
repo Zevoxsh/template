@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, User, Shield, ChevronDown, Menu, X } from "lucide-react";
+import { LogOut, User, ChevronDown, Menu, X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuthContext } from "@/context/auth-context";
 
@@ -29,7 +29,6 @@ export function Navbar() {
   const navLinks = [
     { href: "/dashboard", label: "Tableau de bord" },
     { href: "/profile", label: "Profil" },
-    ...(user?.role === "ADMIN" ? [{ href: "/admin", label: "Admin", admin: true }] : []),
   ];
 
   return (
@@ -81,12 +80,6 @@ export function Navbar() {
                 className="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
                 <User className="h-3.5 w-3.5 text-slate-400" /> Mon profil
               </Link>
-              {user?.role === "ADMIN" && (
-                <Link href="/admin" onClick={() => setDropOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-                  <Shield className="h-3.5 w-3.5 text-slate-400" /> Administration
-                </Link>
-              )}
               <div className="border-t border-slate-100 mt-1">
                 <button onClick={handleLogout}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
