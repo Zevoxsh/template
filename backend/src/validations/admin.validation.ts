@@ -20,5 +20,5 @@ export const updateSettingsSchema = z.object({
   announcementEnabled: z.boolean().optional(),
   announcementText: z.string().max(500).optional(),
   announcementType: z.enum(["info", "warning", "success", "error"]).optional(),
-  emailTemplates: z.record(z.object({ subject: z.string(), body: z.string() })).optional(),
+  emailTemplates: z.record(z.string(), z.object({ subject: z.string(), body: z.string() })).optional(),
 });
