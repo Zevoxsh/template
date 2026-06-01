@@ -26,7 +26,9 @@ export function Navbar() {
 
   const initials = user?.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 
-  const navLinks = [
+  const isAdmin = pathname.startsWith("/admin");
+
+  const navLinks = isAdmin ? [] : [
     { href: "/dashboard", label: "Tableau de bord" },
     { href: "/profile", label: "Profil" },
   ];

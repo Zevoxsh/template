@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, ShieldCheck, Settings, ChevronLeft } from "lucide-react";
+import { LayoutDashboard, Users, ShieldCheck, Settings, KeyRound, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/admin",          label: "Vue d'ensemble",     icon: LayoutDashboard, exact: true },
-  { href: "/admin/users",    label: "Utilisateurs",        icon: Users,           exact: false },
-  { href: "/admin/roles",    label: "Rôles & Permissions", icon: ShieldCheck,     exact: false },
-  { href: "/admin/settings", label: "Paramètres",          icon: Settings,        exact: false },
+  { href: "/admin",             label: "Vue d'ensemble",     icon: LayoutDashboard, exact: true },
+  { href: "/admin/users",       label: "Utilisateurs",        icon: Users,           exact: false },
+  { href: "/admin/roles",       label: "Rôles & Permissions", icon: ShieldCheck,     exact: false },
+  { href: "/admin/auth-config", label: "Authentification",    icon: KeyRound,        exact: false },
+  { href: "/admin/settings",    label: "Paramètres",          icon: Settings,        exact: false },
 ];
 
 export function AdminSidebar({ onClose }: { onClose?: () => void }) {

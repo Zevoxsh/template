@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -22,6 +22,11 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const { refresh } = useAuthContext();
   const [error, setError] = useState("");
+  const [oauthProviders, setOauthProviders] = useState<{ name: string; displayName: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/auth/providers").then((r) => r.json()).then((d) => setOauthProviders(d.oauth ?? [])).catch(() => {});
+  }, []);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -70,6 +75,26 @@ function LoginForm() {
           Se connecter
         </Button>
       </form>
+
+      {oauthProviders.length > 0 && (
+        <div className="mt-5">
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
+            <div className="relative flex justify-center"><span className="bg-white px-3 text-xs text-slate-400">ou continuer avec</span></div>
+          </div>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(oauthProviders.length, 3)}, 1fr)` }}>
+            {oauthProviders.map((p) => (
+              <a
+                key={p.name}
+                href={`/api/auth/oauth/${p.name}`}
+                className="flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+              >
+                {p.displayName}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       <p className="mt-5 text-center text-sm text-slate-500">
         Pas encore de compte ?{" "}

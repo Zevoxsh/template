@@ -19,6 +19,7 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   tokens        Token[]
+  oauthAccounts OAuthAccount[]
 }
 
 enum Role {
@@ -51,6 +52,46 @@ model SiteSettings {
   requireEmailVerification Boolean  @default(true)
   maintenanceMode          Boolean  @default(false)
   updatedAt                DateTime @updatedAt
+}
+
+model OAuthProvider {
+  id           String   @id @default(cuid())
+  name         String   @unique  // google, github, discord, microsoft, custom
+  displayName  String
+  enabled      Boolean  @default(false)
+  clientId     String   @default("")
+  clientSecret String   @default("")
+  authUrl      String   @default("")
+  tokenUrl     String   @default("")
+  userInfoUrl  String   @default("")
+  scope        String   @default("")
+  iconUrl      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model LdapConfig {
+  id           String   @id @default("singleton")
+  enabled      Boolean  @default(false)
+  host         String   @default("")
+  port         Int      @default(389)
+  bindDn       String   @default("")
+  bindPassword String   @default("")
+  searchBase   String   @default("")
+  searchFilter String   @default("(uid={{username}})")
+  useTls       Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+}
+
+model OAuthAccount {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String
+  providerAccountId String
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
 }
 
 model RolePermission {

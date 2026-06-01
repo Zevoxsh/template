@@ -21,6 +21,7 @@
     "express": "^5.2.1",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
+    "ldapjs": "^3.0.7",
     "nodemailer": "^8.0.10",
     "zod": "^4.4.3"
   },
@@ -30,8 +31,9 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/nodemailer": "^8.0.0",
+    "@types/ldapjs": "^3.0.6",
     "@types/node": "^25",
+    "@types/nodemailer": "^8.0.0",
     "nodemon": "^3.1.14",
     "prisma": "^6.7.0",
     "ts-node": "^10.9.2",

@@ -92,6 +92,18 @@ class ApiClient {
 
     resetPermissions: () =>
       this.request<{ message: string }>("/admin/roles/reset", { method: "POST" }),
+
+    getAuthConfig: () =>
+      this.request<{ oauthProviders: any[]; ldap: any; presets: string[] }>("/admin/auth-config"),
+
+    saveOAuthProvider: (name: string, body: object) =>
+      this.request<{ provider: any }>(`/admin/auth-config/oauth/${name}`, { method: "PUT", body: JSON.stringify(body) }),
+
+    deleteOAuthProvider: (name: string) =>
+      this.request<{ message: string }>(`/admin/auth-config/oauth/${name}`, { method: "DELETE" }),
+
+    saveLdap: (body: object) =>
+      this.request<{ ldap: any }>("/admin/auth-config/ldap", { method: "PUT", body: JSON.stringify(body) }),
   };
 }
 

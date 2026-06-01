@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuthContext } from "@/context/auth-context";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
-import { AdminNavbar } from "@/components/layout/admin-navbar";
 import { Menu } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -19,10 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (loading || user?.role !== "ADMIN") return null;
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <AdminNavbar />
-
-      <div className="flex flex-1 relative overflow-hidden">
+    <div className="flex flex-1 relative overflow-hidden" style={{ minHeight: "calc(100vh - 56px)" }}>
         {/* Mobile overlay */}
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black/30 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -47,7 +43,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <div className="px-6 py-6 max-w-5xl">{children}</div>
         </main>
-      </div>
     </div>
   );
 }
