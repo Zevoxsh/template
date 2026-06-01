@@ -6,6 +6,7 @@ export interface AccessTokenPayload {
   email: string;
   role: string;
   name: string;
+  banned?: boolean;
 }
 
 export function signAccessToken(payload: AccessTokenPayload): string {

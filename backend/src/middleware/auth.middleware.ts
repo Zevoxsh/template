@@ -24,11 +24,10 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
   if (accessToken) {
     try {
       const payload = verifyAccessToken(accessToken);
-      const dbUser = await prisma.user.findUnique({ where: { id: payload.sub }, select: { banned: true, bannedReason: true } });
-      if (dbUser?.banned) {
+      if (payload.banned) {
         res.clearCookie("access_token", COOKIE_OPTS);
         res.clearCookie("refresh_token", COOKIE_OPTS);
-        return next(new AppError(403, `Compte banni : ${dbUser.bannedReason ?? "contactez le support"}`));
+        return next(new AppError(403, "Compte banni — contactez le support"));
       }
       req.user = { id: payload.sub, email: payload.email, role: payload.role as any, name: payload.name };
       return next();
@@ -74,7 +73,7 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
       },
     });
 
-    res.cookie("access_token", newAccessToken, { ...COOKIE_OPTS, maxAge: 24 * 60 * 60 * 1000 });
+    res.cookie("access_token", newAccessToken, { ...COOKIE_OPTS, maxAge: 15 * 60 * 1000 });
     res.cookie("refresh_token", newRefreshToken, { ...COOKIE_OPTS, maxAge: 30 * 24 * 60 * 60 * 1000 });
 
     req.user = {

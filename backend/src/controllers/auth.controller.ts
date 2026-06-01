@@ -19,8 +19,8 @@ const COOKIE_OPTS = {
   path: "/",
 };
 
-async function issueTokens(res: Response, userId: string, email: string, role: string, name: string, req?: Request) {
-  const accessToken = signAccessToken({ sub: userId, email, role, name });
+async function issueTokens(res: Response, userId: string, email: string, role: string, name: string, req?: Request, banned = false) {
+  const accessToken = signAccessToken({ sub: userId, email, role, name, banned });
   const refreshToken = signRefreshToken(userId);
 
   await prisma.token.create({
@@ -35,7 +35,7 @@ async function issueTokens(res: Response, userId: string, email: string, role: s
     },
   });
 
-  res.cookie("access_token", accessToken, { ...COOKIE_OPTS, maxAge: 24 * 60 * 60 * 1000 });
+  res.cookie("access_token", accessToken, { ...COOKIE_OPTS, maxAge: 15 * 60 * 1000 });
   res.cookie("refresh_token", refreshToken, { ...COOKIE_OPTS, maxAge: 30 * 24 * 60 * 60 * 1000 });
 }
 

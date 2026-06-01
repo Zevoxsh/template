@@ -11,10 +11,8 @@ interface AuditParams {
   ipAddress?: string;
 }
 
-export async function audit(params: AuditParams) {
-  try {
-    await prisma.auditLog.create({ data: params });
-  } catch {
-    // never throw — logging must be non-blocking
-  }
+export function audit(params: AuditParams) {
+  setImmediate(() => {
+    prisma.auditLog.create({ data: params }).catch(() => {});
+  });
 }

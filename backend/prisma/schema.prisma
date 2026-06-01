@@ -53,6 +53,9 @@ model Token {
   userAgent String?
   ipAddress String?
   lastUsed  DateTime?
+
+  @@index([userId, type])
+  @@index([expiresAt])
 }
 
 enum TokenType {
@@ -144,6 +147,10 @@ model AuditLog {
   metadata   Json?
   ipAddress  String?
   createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([action])
 }
 
 model RateLimitBlock {
@@ -167,4 +174,7 @@ model Notification {
   link      String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([createdAt])
 }
