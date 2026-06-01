@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const PROTECTED = ["/dashboard", "/profile", "/admin"];
 const AUTH_ONLY = ["/login", "/register", "/forgot-password", "/reset-password"];
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const hasToken = req.cookies.has("access_token") || req.cookies.has("refresh_token");
 
