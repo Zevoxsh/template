@@ -19,7 +19,9 @@ start:
 	@echo "Waiting for PostgreSQL..."
 	@sleep 3
 	@echo "==> Migration DB..."
-	cd backend && npx prisma migrate deploy
+	cd backend && npx prisma migrate dev --name auto
+	@echo "==> Génération client Prisma..."
+	cd backend && npx prisma generate
 	@echo "==> Build backend..."
 	cd backend && npm run build
 	@echo "==> Build frontend..."
