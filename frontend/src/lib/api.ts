@@ -113,6 +113,9 @@ class ApiClient {
 
     saveLdap: (body: object) =>
       this.request<{ ldap: any }>("/admin/auth-config/ldap", { method: "PUT", body: JSON.stringify(body) }),
+
+    testSmtp: () =>
+      this.request<{ ok: boolean; message?: string; error?: string }>("/admin/test-smtp", { method: "POST" }),
   };
 }
 

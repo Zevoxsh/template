@@ -7,6 +7,7 @@ import {
   createUser, sendPasswordReset, sendEmailVerification,
   getSettings, updateSettings,
 } from "../controllers/admin.controller";
+import { testSmtp } from "../lib/mail";
 import { updateUserSchema, updateSettingsSchema } from "../validations/admin.validation";
 
 const router = Router();
@@ -23,5 +24,14 @@ router.post("/users/:id/reset-password", sendPasswordReset);
 router.post("/users/:id/send-verification", sendEmailVerification);
 router.get("/settings", getSettings);
 router.put("/settings", validate(updateSettingsSchema), updateSettings);
+
+router.post("/test-smtp", async (_req, res, next) => {
+  try {
+    await testSmtp();
+    res.json({ ok: true, message: "Connexion SMTP réussie" });
+  } catch (err: any) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
 
 export default router;

@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { SiteSettings } from "@/types";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/admin/page-header";
+import { Mail } from "lucide-react";
 
 function Row({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
   return (
@@ -44,6 +45,18 @@ export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [smtpMsg, setSmtpMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const testSmtp = async () => {
+    setSmtpMsg(null);
+    try {
+      const r = await api.admin.testSmtp();
+      setSmtpMsg({ ok: r.ok, text: r.message ?? r.error ?? "?" });
+    } catch (e: any) {
+      setSmtpMsg({ ok: false, text: e.message });
+    }
+    setTimeout(() => setSmtpMsg(null), 5000);
+  };
 
   useEffect(() => {
     api.admin.getSettings().then(({ settings }) => setForm(settings));
@@ -71,8 +84,16 @@ export default function AdminSettingsPage() {
         description="Configuration globale de l'application"
         actions={
           <>
+            {smtpMsg && (
+              <span className={`text-xs font-medium ${smtpMsg.ok ? "text-green-600" : "text-red-600"}`}>
+                {smtpMsg.ok ? "✓" : "✗"} {smtpMsg.text}
+              </span>
+            )}
             {saved && <span className="text-xs text-green-600 font-medium">✓ Sauvegardé</span>}
             {error && <span className="text-xs text-red-600">{error}</span>}
+            <Button size="sm" variant="outline" onClick={testSmtp}>
+              <Mail className="h-3.5 w-3.5 mr-1.5" /> Tester SMTP
+            </Button>
             <Button size="sm" onClick={save} loading={saving}>Enregistrer</Button>
           </>
         }
