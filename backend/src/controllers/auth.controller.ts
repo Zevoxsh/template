@@ -78,7 +78,14 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true, name: true, email: true, role: true, password: true,
+        banned: true, bannedReason: true, emailVerified: true,
+        twoFactorEnabled: true, twoFactorMethod: true,
+      },
+    });
     if (!user || !(await comparePassword(password, user.password))) {
       throw new AppError(401, "Invalid email or password");
     }
@@ -88,6 +95,29 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     const settings = await prisma.siteSettings.findUnique({ where: { id: "singleton" } });
     if (settings?.requireEmailVerification && !user.emailVerified) {
       throw new AppError(403, "Please verify your email before logging in");
+    }
+
+    // Check if 2FA is needed
+    const needsTwoFactor = user.twoFactorEnabled;
+    const settings2fa = needsTwoFactor ? null : await prisma.siteSettings.findUnique({ where: { id: "singleton" } });
+    const policyRequired = settings2fa?.twoFactorPolicy === "REQUIRED";
+
+    if (needsTwoFactor || policyRequired) {
+      const challengeToken = crypto.randomBytes(32).toString("hex");
+      await prisma.token.deleteMany({ where: { userId: user.id, type: TokenType.TWO_FACTOR_CHALLENGE } });
+      await prisma.token.create({
+        data: {
+          userId: user.id,
+          type: TokenType.TWO_FACTOR_CHALLENGE,
+          token: challengeToken,
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        },
+      });
+      return res.json({
+        twoFactorRequired: true,
+        challengeToken,
+        method: user.twoFactorMethod ?? null,
+      });
     }
 
     await issueTokens(res, user.id, user.email, user.role, user.name);

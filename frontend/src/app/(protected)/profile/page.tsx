@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import {
   Camera, Check, Link2, Link2Off, ShieldCheck,
   User, Lock, KeyRound, AlertCircle, CalendarDays,
+  Smartphone, Mail as MailIcon, Shield, Copy, RefreshCw,
 } from "lucide-react";
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
@@ -102,6 +103,16 @@ export default function ProfilePage() {
   const [pwMsg, setPwMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [connMsg, setConnMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // 2FA
+  const [twoFaPolicy, setTwoFaPolicy] = useState<{ policy: string; methods: string[] } | null>(null);
+  const [twoFaStep, setTwoFaStep] = useState<"idle" | "totp-qr" | "totp-verify" | "email-sent" | "backup">( "idle");
+  const [twoFaMsg, setTwoFaMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [twoFaLoading, setTwoFaLoading] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [totpSecret, setTotpSecret] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+
   const flash = (set: (v: { type: "success" | "error"; text: string } | null) => void, type: "success" | "error", text: string) => {
     set({ type, text });
     setTimeout(() => set(null), type === "success" ? 3000 : 4000);
@@ -173,6 +184,95 @@ export default function ProfilePage() {
       setConnections(c => c.filter(x => x.provider !== provider));
       flash(setConnMsg, "success", "Compte déconnecté avec succès");
     } catch (e: any) { flash(setConnMsg, "error", e.message); }
+  };
+
+  // ─── 2FA handlers ────────────────────────────────────────────────────────
+  useEffect(() => {
+    fetch("/api/settings").then(r => r.json())
+      .then(d => {}) // site name only, fetch 2fa policy separately
+      .catch(() => {});
+    fetch("/api/admin/settings", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.settings) setTwoFaPolicy({ policy: d.settings.twoFactorPolicy, methods: d.settings.twoFactorAllowedMethods });
+      })
+      .catch(() => {});
+  }, []);
+
+  const startTotpSetup = async () => {
+    setTwoFaLoading(true);
+    setTwoFaMsg(null);
+    try {
+      const { qrCode: qr, secret } = await api.auth.twoFactor.totpSetup();
+      setQrCode(qr);
+      setTotpSecret(secret);
+      setTwoFaStep("totp-qr");
+    } catch (e: any) { flash(setTwoFaMsg, "error", e.message); }
+    finally { setTwoFaLoading(false); }
+  };
+
+  const activateTotp = async () => {
+    if (!totpCode.trim()) return;
+    setTwoFaLoading(true);
+    setTwoFaMsg(null);
+    try {
+      const { backupCodes: codes } = await api.auth.twoFactor.totpActivate(totpCode);
+      setBackupCodes(codes);
+      setTwoFaStep("backup");
+      setTotpCode("");
+      await refresh();
+    } catch (e: any) { flash(setTwoFaMsg, "error", e.message); }
+    finally { setTwoFaLoading(false); }
+  };
+
+  const startEmailSetup = async () => {
+    setTwoFaLoading(true);
+    setTwoFaMsg(null);
+    try {
+      await api.auth.twoFactor.emailSetup();
+      setTwoFaStep("email-sent");
+    } catch (e: any) { flash(setTwoFaMsg, "error", e.message); }
+    finally { setTwoFaLoading(false); }
+  };
+
+  const activateEmail = async () => {
+    if (!totpCode.trim()) return;
+    setTwoFaLoading(true);
+    setTwoFaMsg(null);
+    try {
+      const { backupCodes: codes } = await api.auth.twoFactor.emailActivate(totpCode);
+      setBackupCodes(codes);
+      setTwoFaStep("backup");
+      setTotpCode("");
+      await refresh();
+    } catch (e: any) { flash(setTwoFaMsg, "error", e.message); }
+    finally { setTwoFaLoading(false); }
+  };
+
+  const disable2FA = async () => {
+    if (!confirm("Désactiver la double authentification ?")) return;
+    setTwoFaLoading(true);
+    try {
+      await api.auth.twoFactor.disable();
+      await refresh();
+      setTwoFaStep("idle");
+      flash(setTwoFaMsg, "success", "2FA désactivée");
+    } catch (e: any) { flash(setTwoFaMsg, "error", e.message); }
+    finally { setTwoFaLoading(false); }
+  };
+
+  const regenBackupCodes = async () => {
+    setTwoFaLoading(true);
+    try {
+      const { backupCodes: codes } = await api.auth.twoFactor.regenerateBackupCodes();
+      setBackupCodes(codes);
+      setTwoFaStep("backup");
+    } catch (e: any) { flash(setTwoFaMsg, "error", e.message); }
+    finally { setTwoFaLoading(false); }
+  };
+
+  const copySecret = () => {
+    if (totpSecret) navigator.clipboard.writeText(totpSecret);
   };
 
   const allProviders = [...new Set([...Object.keys(PROVIDER_CONFIG), ...availableProviders.map(p => p.name)])];
@@ -355,6 +455,172 @@ export default function ProfilePage() {
                   </Button>
                 </div>
               </form>
+            </div>
+
+            {/* 2FA */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+              <SectionHeader
+                icon={Shield}
+                title="Double authentification (2FA)"
+                description={
+                  twoFaPolicy?.policy === "REQUIRED"
+                    ? "Obligatoire sur ce site — configurez une méthode ci-dessous"
+                    : twoFaPolicy?.policy === "DISABLED"
+                    ? "Désactivée par l'administrateur"
+                    : "Renforcez la sécurité de votre compte"
+                }
+              />
+
+              {twoFaMsg && <div className="mb-4"><Toast type={twoFaMsg.type} msg={twoFaMsg.text} /></div>}
+
+              {twoFaPolicy?.policy === "DISABLED" ? (
+                <p className="text-sm text-slate-400 italic">La 2FA est désactivée sur ce site.</p>
+              ) : user?.twoFactorEnabled && twoFaStep === "idle" ? (
+                /* ── Enabled state ── */
+                <div className="space-y-4">
+                  <div className={cn(
+                    "flex items-center gap-3 p-4 rounded-xl border",
+                    user.twoFactorMethod === "totp" ? "bg-indigo-50 border-indigo-100" : "bg-blue-50 border-blue-100"
+                  )}>
+                    {user.twoFactorMethod === "totp"
+                      ? <Smartphone className="h-5 w-5 text-indigo-500 shrink-0" />
+                      : <MailIcon className="h-5 w-5 text-blue-500 shrink-0" />}
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {user.twoFactorMethod === "totp" ? "Application d'authentification" : "Email OTP"} activé
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">Votre compte est protégé par la 2FA.</p>
+                    </div>
+                    <ShieldCheck className="h-5 w-5 text-green-500 ml-auto shrink-0" />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={regenBackupCodes} loading={twoFaLoading}>
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />Codes de secours
+                    </Button>
+                    {twoFaPolicy?.policy !== "REQUIRED" && (
+                      <Button size="sm" variant="danger" onClick={disable2FA} loading={twoFaLoading}>
+                        Désactiver la 2FA
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+              ) : twoFaStep === "backup" ? (
+                /* ── Backup codes display ── */
+                <div className="space-y-4">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <p className="text-sm font-semibold text-amber-800 mb-1">Sauvegardez ces codes de secours</p>
+                    <p className="text-xs text-amber-700 mb-3">Chaque code ne peut être utilisé qu'une seule fois. Conservez-les dans un endroit sûr.</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {backupCodes?.map(code => (
+                        <code key={code} className="text-center text-sm font-mono bg-white border border-amber-200 rounded-lg px-3 py-2 text-slate-700">
+                          {code}
+                        </code>
+                      ))}
+                    </div>
+                  </div>
+                  <Button size="sm" onClick={() => setTwoFaStep("idle")}>
+                    <Check className="h-3.5 w-3.5 mr-1.5" />Compris, j'ai sauvegardé mes codes
+                  </Button>
+                </div>
+
+              ) : twoFaStep === "totp-qr" ? (
+                /* ── TOTP QR code ── */
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-600">Scannez ce QR code avec votre application (Google Authenticator, Authy…)</p>
+                  {qrCode && <img src={qrCode} alt="QR Code 2FA" className="w-44 h-44 rounded-xl border border-slate-200" />}
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Ou entrez la clé manuellement :</p>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 flex-1 break-all text-slate-600">
+                        {totpSecret}
+                      </code>
+                      <button onClick={copySecret} className="p-2 rounded-lg hover:bg-slate-100 transition-colors" title="Copier">
+                        <Copy className="h-4 w-4 text-slate-400" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Code de vérification</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="000 000"
+                        maxLength={7}
+                        value={totpCode}
+                        onChange={e => setTotpCode(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && activateTotp()}
+                        className="flex-1 text-center text-xl font-mono tracking-widest border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <Button onClick={activateTotp} loading={twoFaLoading}>Activer</Button>
+                    </div>
+                    {twoFaMsg && <Toast type={twoFaMsg.type} msg={twoFaMsg.text} />}
+                  </div>
+                  <button onClick={() => setTwoFaStep("idle")} className="text-sm text-slate-400 hover:text-slate-600">← Annuler</button>
+                </div>
+
+              ) : twoFaStep === "email-sent" ? (
+                /* ── Email OTP verify ── */
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-600">Un code à 6 chiffres a été envoyé à <strong>{user?.email}</strong></p>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Code de vérification</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="000000"
+                        maxLength={6}
+                        value={totpCode}
+                        onChange={e => setTotpCode(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && activateEmail()}
+                        className="flex-1 text-center text-xl font-mono tracking-widest border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <Button onClick={activateEmail} loading={twoFaLoading}>Activer</Button>
+                    </div>
+                    {twoFaMsg && <Toast type={twoFaMsg.type} msg={twoFaMsg.text} />}
+                  </div>
+                  <button onClick={() => setTwoFaStep("idle")} className="text-sm text-slate-400 hover:text-slate-600">← Annuler</button>
+                </div>
+
+              ) : (
+                /* ── Choose method ── */
+                <div className="space-y-3">
+                  {(twoFaPolicy?.methods ?? ["totp", "email"]).includes("totp") && (
+                    <button
+                      onClick={startTotpSetup}
+                      disabled={twoFaLoading}
+                      className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40 transition-colors text-left group"
+                    >
+                      <div className="h-10 w-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                        <Smartphone className="h-5 w-5 text-indigo-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">Application d'authentification</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Google Authenticator, Authy, 1Password…</p>
+                      </div>
+                      <span className="text-xs text-indigo-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity shrink-0">Configurer →</span>
+                    </button>
+                  )}
+                  {(twoFaPolicy?.methods ?? ["totp", "email"]).includes("email") && (
+                    <button
+                      onClick={startEmailSetup}
+                      disabled={twoFaLoading}
+                      className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 transition-colors text-left group"
+                    >
+                      <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                        <MailIcon className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">Email OTP</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Recevez un code à usage unique par email</p>
+                      </div>
+                      <span className="text-xs text-blue-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity shrink-0">Configurer →</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Connected Accounts */}

@@ -8,6 +8,8 @@ export interface User {
   emailVerified: boolean;
   avatarUrl?: string | null;
   avatarFlagged?: boolean;
+  twoFactorEnabled?: boolean;
+  twoFactorMethod?: string | null;
   banned?: boolean;
   bannedReason?: string | null;
   createdAt?: string;
@@ -21,6 +23,8 @@ export interface SiteSettings {
   registrationEnabled: boolean;
   requireEmailVerification: boolean;
   maintenanceMode: boolean;
+  twoFactorPolicy: "DISABLED" | "OPTIONAL" | "REQUIRED";
+  twoFactorAllowedMethods: ("totp" | "email")[];
   updatedAt: string;
 }
 

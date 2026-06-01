@@ -14,4 +14,6 @@ export const updateSettingsSchema = z.object({
   registrationEnabled: z.boolean().optional(),
   requireEmailVerification: z.boolean().optional(),
   maintenanceMode: z.boolean().optional(),
+  twoFactorPolicy: z.enum(["DISABLED", "OPTIONAL", "REQUIRED"]).optional(),
+  twoFactorAllowedMethods: z.array(z.enum(["totp", "email"])).optional(),
 });

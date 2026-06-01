@@ -5,6 +5,7 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { config } from "./config";
 import authRoutes from "./routes/auth.routes";
+import twoFactorRoutes from "./routes/twoFactor.routes";
 import userRoutes from "./routes/user.routes";
 import adminRoutes from "./routes/admin.routes";
 import rolesRoutes from "./routes/roles.routes";
@@ -31,6 +32,7 @@ app.get("/api/settings", async (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/auth", twoFactorRoutes);
 app.use("/api/auth", oauthRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);

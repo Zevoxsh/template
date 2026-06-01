@@ -24,7 +24,7 @@ class ApiClient {
       this.request<{ message: string }>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
 
     login: (body: { email: string; password: string }) =>
-      this.request<{ user: import("@/types").User }>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+      this.request<{ user?: import("@/types").User; twoFactorRequired?: boolean; challengeToken?: string; method?: string | null }>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
 
     logout: () =>
       this.request<{ message: string }>("/auth/logout", { method: "POST" }),
@@ -40,6 +40,32 @@ class ApiClient {
 
     verifyEmail: (token: string) =>
       this.request<{ message: string }>(`/auth/verify-email?token=${token}`),
+
+    twoFactor: {
+      verifyChallenge: (challengeToken: string, code: string) =>
+        this.request<{ user: import("@/types").User }>("/auth/2fa/verify", { method: "POST", body: JSON.stringify({ challengeToken, code }) }),
+
+      sendEmailOtp: (challengeToken: string) =>
+        this.request<{ message: string }>("/auth/2fa/email/send", { method: "POST", body: JSON.stringify({ challengeToken }) }),
+
+      totpSetup: () =>
+        this.request<{ secret: string; qrCode: string; uri: string }>("/auth/2fa/totp/setup", { method: "POST" }),
+
+      totpActivate: (code: string) =>
+        this.request<{ backupCodes: string[] }>("/auth/2fa/totp/activate", { method: "POST", body: JSON.stringify({ code }) }),
+
+      emailSetup: () =>
+        this.request<{ message: string }>("/auth/2fa/email/setup", { method: "POST" }),
+
+      emailActivate: (code: string) =>
+        this.request<{ backupCodes: string[] }>("/auth/2fa/email/activate", { method: "POST", body: JSON.stringify({ code }) }),
+
+      disable: () =>
+        this.request<{ message: string }>("/auth/2fa/disable", { method: "POST" }),
+
+      regenerateBackupCodes: () =>
+        this.request<{ backupCodes: string[] }>("/auth/2fa/backup-codes/regenerate", { method: "POST" }),
+    },
   };
 
   // User

@@ -47,6 +47,21 @@ export async function sendVerificationEmail(to: string, token: string) {
   );
 }
 
+export async function sendTwoFactorEmail(to: string, code: string) {
+  await send(
+    to,
+    "Votre code de vérification",
+    `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+      <h2 style="font-size:20px;color:#1e293b">Code de vérification</h2>
+      <p style="color:#64748b">Utilisez ce code pour finaliser votre connexion. Il expire dans 10 minutes.</p>
+      <div style="margin:24px 0;padding:16px 24px;background:#f1f5f9;border-radius:12px;text-align:center">
+        <span style="font-size:32px;font-weight:700;letter-spacing:0.2em;color:#4f46e5">${code}</span>
+      </div>
+      <p style="color:#94a3b8;font-size:12px">Si vous n'avez pas tenté de vous connecter, ignorez cet email et sécurisez votre compte.</p>
+    </div>`
+  );
+}
+
 export async function sendPasswordResetEmail(to: string, token: string) {
   const url = `${config.frontendUrl}/reset-password?token=${token}`;
   await send(

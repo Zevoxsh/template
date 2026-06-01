@@ -18,10 +18,14 @@ model User {
   bannedReason  String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  avatarUrl     String?
-  avatarFlagged Boolean  @default(false)
-  tokens        Token[]
-  oauthAccounts OAuthAccount[]
+  avatarUrl         String?
+  avatarFlagged     Boolean  @default(false)
+  twoFactorEnabled  Boolean  @default(false)
+  twoFactorMethod   String?
+  twoFactorSecret   String?
+  backupCodes       String[]
+  tokens            Token[]
+  oauthAccounts     OAuthAccount[]
 }
 
 enum Role {
@@ -44,6 +48,8 @@ enum TokenType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
   REFRESH
+  TWO_FACTOR_CHALLENGE
+  TWO_FACTOR_EMAIL
 }
 
 model SiteSettings {
@@ -53,6 +59,8 @@ model SiteSettings {
   registrationEnabled      Boolean  @default(true)
   requireEmailVerification Boolean  @default(true)
   maintenanceMode          Boolean  @default(false)
+  twoFactorPolicy          String   @default("OPTIONAL")
+  twoFactorAllowedMethods  String[] @default(["totp", "email"])
   updatedAt                DateTime @updatedAt
 }
 
