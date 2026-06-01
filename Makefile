@@ -1,4 +1,4 @@
-.PHONY: dev install db-up db-down db-migrate db-seed build prod-up prod-down
+.PHONY: dev install db-up db-down db-reset db-migrate db-seed build prod-up prod-down
 
 # ── Développement sans Docker ──────────────────────────────────────────────
 dev:
@@ -17,6 +17,10 @@ db-up:
 
 db-down:
 	docker compose -f docker-compose.dev.yml down
+
+db-reset:
+	docker compose -f docker-compose.dev.yml down -v
+	docker compose -f docker-compose.dev.yml up -d
 
 # ── Base de données ───────────────────────────────────────────────────────
 db-migrate:
