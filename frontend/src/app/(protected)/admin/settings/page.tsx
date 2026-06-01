@@ -5,7 +5,8 @@ import { api } from "@/lib/api";
 import { SiteSettings } from "@/types";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/admin/page-header";
-import { Mail, Megaphone, Timer } from "lucide-react";
+import { Mail, Megaphone, Timer, ImageIcon, X } from "lucide-react";
+import { useRef } from "react";
 
 function Row({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
   return (
@@ -45,7 +46,35 @@ export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoMsg, setLogoMsg] = useState("");
+  const logoRef = useRef<HTMLInputElement>(null);
   const [smtpMsg, setSmtpMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const uploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("logo", file);
+      const res = await fetch("/api/admin/settings/logo", { method: "POST", body: fd, credentials: "include" });
+      if (!res.ok) throw new Error((await res.json()).error ?? "Erreur");
+      const { logoUrl } = await res.json();
+      setForm(f => ({ ...f, logoUrl }));
+      setLogoMsg("Logo mis à jour");
+    } catch (e: any) { setLogoMsg(e.message); }
+    finally { setLogoUploading(false); setTimeout(() => setLogoMsg(""), 3000); }
+  };
+
+  const deleteLogo = async () => {
+    try {
+      await fetch("/api/admin/settings/logo", { method: "DELETE", credentials: "include" });
+      setForm(f => ({ ...f, logoUrl: undefined }));
+      setLogoMsg("Logo supprimé");
+    } catch (e: any) { setLogoMsg(e.message); }
+    finally { setTimeout(() => setLogoMsg(""), 3000); }
+  };
 
   const testSmtp = async () => {
     setSmtpMsg(null);
@@ -100,6 +129,39 @@ export default function AdminSettingsPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Logo */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-fit">
+          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
+            <ImageIcon className="h-3.5 w-3.5 text-slate-400" />
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Logo du site</p>
+          </div>
+          <div className="px-5 py-4">
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden">
+                {form.logoUrl
+                  ? <img src={form.logoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
+                  : <ImageIcon className="h-7 w-7 text-slate-300" />
+                }
+              </div>
+              <div className="flex-1 space-y-2">
+                <p className="text-xs text-slate-500">PNG, JPG, SVG — max 2 Mo. Utilisé comme favicon et dans la navbar.</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button size="sm" variant="outline" loading={logoUploading} onClick={() => logoRef.current?.click()}>
+                    {form.logoUrl ? "Remplacer" : "Choisir un logo"}
+                  </Button>
+                  {form.logoUrl && (
+                    <Button size="sm" variant="danger" onClick={deleteLogo}>
+                      <X className="h-3.5 w-3.5 mr-1" /> Supprimer
+                    </Button>
+                  )}
+                </div>
+                {logoMsg && <p className="text-xs text-green-600">{logoMsg}</p>}
+              </div>
+            </div>
+            <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={uploadLogo} />
+          </div>
+        </div>
+
         {/* Site info */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">

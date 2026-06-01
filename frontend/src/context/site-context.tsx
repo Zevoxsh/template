@@ -5,12 +5,13 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 interface SiteConfig {
   siteName: string;
   siteDescription: string;
+  logoUrl: string | null;
 }
 
-const SiteContext = createContext<SiteConfig>({ siteName: "MyApp", siteDescription: "" });
+const SiteContext = createContext<SiteConfig>({ siteName: "MyApp", siteDescription: "", logoUrl: null });
 
 export function SiteProvider({ children }: { children: ReactNode }) {
-  const [config, setConfig] = useState<SiteConfig>({ siteName: "MyApp", siteDescription: "" });
+  const [config, setConfig] = useState<SiteConfig>({ siteName: "MyApp", siteDescription: "", logoUrl: null });
 
   useEffect(() => {
     fetch("/api/settings")

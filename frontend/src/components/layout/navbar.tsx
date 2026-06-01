@@ -12,7 +12,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function Navbar() {
   const { user, logout } = useAuthContext();
-  const { siteName } = useSite();
+  const { siteName, logoUrl } = useSite();
   const router = useRouter();
   const pathname = usePathname();
   const [dropOpen, setDropOpen] = useState(false);
@@ -39,7 +39,8 @@ export function Navbar() {
   return (
     <header className="h-14 bg-white border-b border-slate-200 px-4 sm:px-5 flex items-center justify-between relative z-10">
       {/* Logo */}
-      <Link href="/dashboard" className="font-semibold text-slate-900 text-sm tracking-tight shrink-0 mr-6">
+      <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-slate-900 text-sm tracking-tight shrink-0 mr-6">
+        {logoUrl && <img src={logoUrl} alt="" className="h-6 w-6 rounded object-contain" />}
         {siteName}
       </Link>
 

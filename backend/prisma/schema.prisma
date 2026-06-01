@@ -67,6 +67,7 @@ model SiteSettings {
   id                       String   @id @default("singleton")
   siteName                 String   @default("My App")
   siteDescription          String   @default("Welcome to My App")
+  logoUrl                  String?
   registrationEnabled      Boolean  @default(true)
   requireEmailVerification Boolean  @default(true)
   maintenanceMode          Boolean  @default(false)

@@ -32,6 +32,7 @@ app.get("/api/settings", async (_req, res) => {
   res.json({
     siteName: s?.siteName ?? "MyApp",
     siteDescription: s?.siteDescription ?? "",
+    logoUrl: s?.logoUrl ?? null,
     announcementEnabled: s?.announcementEnabled ?? false,
     announcementText: s?.announcementText ?? "",
     announcementType: s?.announcementType ?? "info",
