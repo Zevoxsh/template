@@ -83,6 +83,15 @@ class ApiClient {
 
     updateSettings: (body: Partial<import("@/types").SiteSettings>) =>
       this.request<{ settings: import("@/types").SiteSettings }>("/admin/settings", { method: "PUT", body: JSON.stringify(body) }),
+
+    getRoles: () =>
+      this.request<{ permissions: Record<string, string[]>; available: string[] }>("/admin/roles"),
+
+    updateRolePermissions: (role: string, permissions: string[]) =>
+      this.request<{ role: string; permissions: string[] }>(`/admin/roles/${role}`, { method: "PUT", body: JSON.stringify({ permissions }) }),
+
+    resetPermissions: () =>
+      this.request<{ message: string }>("/admin/roles/reset", { method: "POST" }),
   };
 }
 

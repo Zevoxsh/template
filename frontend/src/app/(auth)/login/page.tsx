@@ -10,14 +10,11 @@ import { api } from "@/lib/api";
 import { useAuthContext } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Alert } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const schema = z.object({
   email: z.string().email("Email invalide"),
   password: z.string().min(1, "Mot de passe requis"),
 });
-
 type FormData = z.infer<typeof schema>;
 
 function LoginForm() {
@@ -37,66 +34,53 @@ function LoginForm() {
       await refresh();
       router.push(searchParams.get("next") ?? "/dashboard");
     } catch (err: any) {
-      setError(err.message ?? "Une erreur est survenue");
+      setError(err.message ?? "Email ou mot de passe incorrect");
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Connexion</CardTitle>
-        <p className="text-sm text-gray-500 mt-1">Entrez vos identifiants pour accéder à votre compte</p>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {error && <Alert variant="error">{error}</Alert>}
+    <div>
+      <div className="mb-7">
+        <h1 className="text-2xl font-bold text-slate-900">Connexion</h1>
+        <p className="text-sm text-slate-500 mt-1">Ravi de vous revoir.</p>
+      </div>
 
-          <Input
-            id="email"
-            label="Email"
-            type="email"
-            autoComplete="email"
-            placeholder="vous@exemple.com"
-            error={errors.email?.message}
-            {...register("email")}
-          />
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+            {error}
+          </div>
+        )}
 
-          <Input
-            id="password"
-            label="Mot de passe"
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            error={errors.password?.message}
-            {...register("password")}
-          />
+        <Input id="email" label="Email" type="email" autoComplete="email"
+          placeholder="vous@exemple.com" error={errors.email?.message} {...register("email")} />
 
-          <div className="flex items-center justify-end">
-            <Link href="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-700">
-              Mot de passe oublié ?
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm font-medium text-slate-700">Mot de passe</label>
+            <Link href="/forgot-password" className="text-xs text-indigo-600 hover:text-indigo-700">
+              Oublié ?
             </Link>
           </div>
+          <Input id="password" type="password" autoComplete="current-password"
+            placeholder="••••••••" error={errors.password?.message} {...register("password")} />
+        </div>
 
-          <Button type="submit" className="w-full" loading={isSubmitting}>
-            Se connecter
-          </Button>
+        <Button type="submit" className="w-full" loading={isSubmitting}>
+          Se connecter
+        </Button>
+      </form>
 
-          <p className="text-center text-sm text-gray-500">
-            Pas encore de compte ?{" "}
-            <Link href="/register" className="text-indigo-600 hover:text-indigo-700 font-medium">
-              S'inscrire
-            </Link>
-          </p>
-        </form>
-      </CardContent>
-    </Card>
+      <p className="mt-5 text-center text-sm text-slate-500">
+        Pas encore de compte ?{" "}
+        <Link href="/register" className="text-indigo-600 hover:text-indigo-700 font-medium">
+          S'inscrire gratuitement
+        </Link>
+      </p>
+    </div>
   );
 }
 
 export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
-  );
+  return <Suspense><LoginForm /></Suspense>;
 }

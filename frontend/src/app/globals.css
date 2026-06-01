@@ -2,8 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f9fafb;
-  color: #111827;
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { -webkit-font-smoothing: antialiased; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  input, textarea, select, button { font-family: inherit; }
 }

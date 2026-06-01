@@ -1,24 +1,31 @@
 .PHONY: dev start install db-up db-down db-reset db-migrate db-seed build prod-up prod-down
 
-# ── Développement (hot-reload, lent sur serveur) ──────────────────────────
+SHELL := /bin/bash
+
+# ── Développement (hot-reload) ────────────────────────────────────────────
 dev:
-	make db-up
+	$(MAKE) db-up
 	@echo "Waiting for PostgreSQL..."
 	@sleep 3
 	cd backend && npx prisma migrate deploy
-	@trap 'kill 0' SIGINT; \
+	@trap 'kill 0' INT; \
 		(cd backend && npm run dev) & \
 		(cd frontend && npm run dev) & \
 		wait
 
-# ── Production locale (rapide, build précompilé) ──────────────────────────
+# ── Production locale (rebuild complet puis démarrage des 2) ─────────────
 start:
-	make db-up
+	$(MAKE) db-up
+	@echo "Waiting for PostgreSQL..."
 	@sleep 3
+	@echo "==> Migration DB..."
 	cd backend && npx prisma migrate deploy
+	@echo "==> Build backend..."
 	cd backend && npm run build
+	@echo "==> Build frontend..."
 	cd frontend && npm run build
-	@trap 'kill 0' SIGINT; \
+	@echo "==> Démarrage..."
+	@trap 'kill 0' INT; \
 		(cd backend && npm run start) & \
 		(cd frontend && npm run start) & \
 		wait
