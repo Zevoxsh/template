@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/admin/page-header";
 import { RotateCcw, Check } from "lucide-react";
 
 const ROLES = ["ADMIN", "MODERATOR", "USER"] as const;
@@ -69,17 +70,16 @@ export default function AdminRolesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Rôles & Permissions</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Configurez les accès pour chaque rôle</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={reset}>
-          <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-          Réinitialiser
-        </Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Rôles & Permissions"
+        description="Configurez les accès pour chaque rôle"
+        actions={
+          <Button variant="outline" size="sm" onClick={reset}>
+            <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Réinitialiser
+          </Button>
+        }
+      />
 
       {msg && (
         <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">

@@ -5,9 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, User, ChevronDown, Menu, X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuthContext } from "@/context/auth-context";
+import { useSite } from "@/context/site-context";
 
 export function Navbar() {
   const { user, logout } = useAuthContext();
+  const { siteName } = useSite();
   const router = useRouter();
   const pathname = usePathname();
   const [dropOpen, setDropOpen] = useState(false);
@@ -37,7 +39,7 @@ export function Navbar() {
     <header className="h-14 bg-white border-b border-slate-200 px-4 sm:px-5 flex items-center justify-between relative z-10">
       {/* Logo */}
       <Link href="/dashboard" className="font-semibold text-slate-900 text-sm tracking-tight shrink-0 mr-6">
-        MyApp
+        {siteName}
       </Link>
 
       {/* Desktop nav */}

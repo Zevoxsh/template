@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/admin/page-header";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 
 interface OAuthProvider {
@@ -106,10 +107,7 @@ export default function AuthConfigPage() {
 
   return (
     <div className="space-y-5 max-w-xl">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">Authentification</h1>
-        <p className="text-xs text-slate-400 mt-0.5">Configurez les méthodes de connexion disponibles</p>
-      </div>
+      <PageHeader title="Authentification" description="Configurez les méthodes de connexion disponibles" />
 
       <StatusMsg msg={msg} />
 

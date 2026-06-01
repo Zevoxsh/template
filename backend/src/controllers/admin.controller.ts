@@ -1,7 +1,11 @@
+import crypto from "crypto";
 import { Response, NextFunction } from "express";
 import { prisma } from "../lib/prisma";
+import { hashPassword } from "../lib/password";
+import { sendPasswordResetEmail, sendVerificationEmail } from "../lib/mail";
 import { AppError } from "../middleware/error.middleware";
 import { AuthRequest } from "../types";
+import { TokenType } from "@prisma/client";
 
 export async function getStats(req: AuthRequest, res: Response, next: NextFunction) {
   try {
@@ -132,6 +136,80 @@ export async function getSettings(_req: AuthRequest, res: Response, next: NextFu
   try {
     const settings = await prisma.siteSettings.findUnique({ where: { id: "singleton" } });
     res.json({ settings });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createUser(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { name, email, role, password } = req.body;
+    if (!name || !email) throw new AppError(400, "Name and email are required");
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) throw new AppError(409, "Email already in use");
+
+    if (password) {
+      // Admin sets a password directly
+      const hashed = await hashPassword(password);
+      const user = await prisma.user.create({
+        data: { name, email, password: hashed, role: role ?? "USER", emailVerified: true },
+        select: { id: true, name: true, email: true, role: true, emailVerified: true, createdAt: true },
+      });
+      return res.status(201).json({ user, passwordSet: true });
+    }
+
+    // No password — send setup email
+    const placeholder = await hashPassword(crypto.randomUUID());
+    const user = await prisma.user.create({
+      data: { name, email, password: placeholder, role: role ?? "USER", emailVerified: false },
+      select: { id: true, name: true, email: true, role: true, emailVerified: true, createdAt: true },
+    });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    await prisma.token.create({
+      data: { userId: user.id, type: TokenType.PASSWORD_RESET, token, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+    });
+    await sendPasswordResetEmail(email, token);
+
+    res.status(201).json({ user, passwordSet: false, message: "Setup email sent" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function sendPasswordReset(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: String(req.params.id) } });
+    if (!user) throw new AppError(404, "User not found");
+
+    await prisma.token.deleteMany({ where: { userId: user.id, type: TokenType.PASSWORD_RESET } });
+    const token = crypto.randomBytes(32).toString("hex");
+    await prisma.token.create({
+      data: { userId: user.id, type: TokenType.PASSWORD_RESET, token, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
+    });
+    await sendPasswordResetEmail(user.email, token);
+
+    res.json({ message: "Password reset email sent" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function sendEmailVerification(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: String(req.params.id) } });
+    if (!user) throw new AppError(404, "User not found");
+    if (user.emailVerified) throw new AppError(400, "Email already verified");
+
+    await prisma.token.deleteMany({ where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION } });
+    const token = crypto.randomBytes(32).toString("hex");
+    await prisma.token.create({
+      data: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, token, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+    });
+    await sendVerificationEmail(user.email, token);
+
+    res.json({ message: "Verification email sent" });
   } catch (err) {
     next(err);
   }

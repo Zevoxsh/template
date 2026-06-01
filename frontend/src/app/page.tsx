@@ -1,10 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { useSite } from "@/context/site-context";
 
 export default function HomePage() {
+  const { siteName, siteDescription } = useSite();
+
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <nav className="border-b border-slate-100 px-6 h-14 flex items-center justify-between max-w-5xl mx-auto w-full">
-        <span className="font-semibold text-slate-900 tracking-tight">MyApp</span>
+        <span className="font-semibold text-slate-900 tracking-tight">{siteName}</span>
         <div className="flex items-center gap-3">
           <Link href="/login" className="text-sm text-slate-600 hover:text-slate-900 transition-colors px-3 py-1.5">
             Connexion
@@ -20,11 +25,9 @@ export default function HomePage() {
           <span className="inline-block text-xs font-medium tracking-widest text-indigo-600 uppercase mb-6">
             Template full-stack
           </span>
-          <h1 className="text-5xl font-bold text-slate-900 leading-tight mb-5">
-            Lancez votre projet<br />sans partir de zéro
-          </h1>
+          <h1 className="text-5xl font-bold text-slate-900 leading-tight mb-5">{siteName}</h1>
           <p className="text-lg text-slate-500 mb-10 max-w-lg mx-auto">
-            Auth complète, gestion des rôles, panneau admin — tout est prêt. Concentrez-vous sur ce qui compte.
+            {siteDescription || "Lancez votre projet sans partir de zéro."}
           </p>
           <div className="flex gap-3 justify-center">
             <Link href="/register" className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Users, Shield, UserX, MailWarning, ArrowUpRight } from "lucide-react";
+import { PageHeader } from "@/components/admin/page-header";
 import { api } from "@/lib/api";
 import { AdminStats } from "@/types";
 import { formatDate } from "@/lib/utils";
@@ -19,13 +20,8 @@ export default function AdminDashboardPage() {
   useEffect(() => { api.admin.getStats().then(setStats).catch(console.error); }, []);
 
   return (
-    <div className="space-y-6 max-w-5xl">
-
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">Vue d'ensemble</h1>
-        <p className="text-sm text-slate-400 mt-0.5">Tableau de bord administrateur</p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader title="Vue d'ensemble" description="Tableau de bord administrateur" />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

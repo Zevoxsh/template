@@ -39,7 +39,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <button onClick={() => setSidebarOpen(true)} className="text-slate-500 hover:text-slate-800">
               <Menu className="h-5 w-5" />
             </button>
-            <span className="text-sm font-medium text-slate-700">Administration</span>
+            <span className="text-sm font-medium text-slate-700">Admin</span>
           </div>
           <div className="px-5 sm:px-8 py-6">{children}</div>
         </main>

@@ -75,8 +75,17 @@ class ApiClient {
     updateUser: (id: string, body: Partial<{ role: string; banned: boolean; bannedReason: string; emailVerified: boolean }>) =>
       this.request<{ user: import("@/types").User }>(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(body) }),
 
+    createUser: (body: { name: string; email: string; role: string; password?: string }) =>
+      this.request<{ user: import("@/types").User; passwordSet: boolean; message?: string }>("/admin/users", { method: "POST", body: JSON.stringify(body) }),
+
     deleteUser: (id: string) =>
       this.request<{ message: string }>(`/admin/users/${id}`, { method: "DELETE" }),
+
+    sendPasswordReset: (id: string) =>
+      this.request<{ message: string }>(`/admin/users/${id}/reset-password`, { method: "POST" }),
+
+    sendEmailVerification: (id: string) =>
+      this.request<{ message: string }>(`/admin/users/${id}/send-verification`, { method: "POST" }),
 
     getSettings: () =>
       this.request<{ settings: import("@/types").SiteSettings }>("/admin/settings"),

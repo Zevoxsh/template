@@ -23,6 +23,11 @@ app.use(cookieParser());
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
+app.get("/api/settings", async (_req, res) => {
+  const s = await (await import("./lib/prisma")).prisma.siteSettings.findUnique({ where: { id: "singleton" } });
+  res.json({ siteName: s?.siteName ?? "MyApp", siteDescription: s?.siteDescription ?? "" });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", oauthRoutes);
 app.use("/api/user", userRoutes);

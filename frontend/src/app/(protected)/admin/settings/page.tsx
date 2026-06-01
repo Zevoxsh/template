@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { SiteSettings } from "@/types";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/admin/page-header";
 
 function Row({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
   return (
@@ -65,17 +66,17 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="max-w-xl space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Paramètres</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Configuration globale de l'application</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {saved && <span className="text-xs text-green-600 font-medium">✓ Sauvegardé</span>}
-          {error && <span className="text-xs text-red-600">{error}</span>}
-          <Button size="sm" onClick={save} loading={saving}>Enregistrer</Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Paramètres"
+        description="Configuration globale de l'application"
+        actions={
+          <>
+            {saved && <span className="text-xs text-green-600 font-medium">✓ Sauvegardé</span>}
+            {error && <span className="text-xs text-red-600">{error}</span>}
+            <Button size="sm" onClick={save} loading={saving}>Enregistrer</Button>
+          </>
+        }
+      />
 
       {/* Site info */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

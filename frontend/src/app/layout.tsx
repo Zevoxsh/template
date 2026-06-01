@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
+import { SiteProvider } from "@/context/site-context";
 
 export const metadata: Metadata = {
   title: "MyApp",
@@ -11,7 +12,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" className="h-full antialiased">
       <body className="min-h-full">
-        <AuthProvider>{children}</AuthProvider>
+        <SiteProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </SiteProvider>
       </body>
     </html>
   );
