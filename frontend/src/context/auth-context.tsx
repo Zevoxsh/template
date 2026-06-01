@@ -21,8 +21,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { user } = await api.auth.me();
       setUser(user);
-    } catch {
+    } catch (err: any) {
       setUser(null);
+      if (err?.status === 403 && typeof window !== "undefined") {
+        const msg = encodeURIComponent(err.message ?? "Compte banni");
+        window.location.href = `/login?banned=${msg}`;
+      }
     }
   };
 

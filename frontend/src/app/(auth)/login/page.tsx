@@ -21,7 +21,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refresh } = useAuthContext();
-  const [error, setError] = useState("");
+  const [error, setError] = useState(searchParams.get("banned") ? decodeURIComponent(searchParams.get("banned")!) : "");
   const [oauthProviders, setOauthProviders] = useState<{ name: string; displayName: string }[]>([]);
 
   useEffect(() => {

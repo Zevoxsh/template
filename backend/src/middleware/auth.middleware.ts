@@ -24,6 +24,12 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
   if (accessToken) {
     try {
       const payload = verifyAccessToken(accessToken);
+      const dbUser = await prisma.user.findUnique({ where: { id: payload.sub }, select: { banned: true, bannedReason: true } });
+      if (dbUser?.banned) {
+        res.clearCookie("access_token", COOKIE_OPTS);
+        res.clearCookie("refresh_token", COOKIE_OPTS);
+        return next(new AppError(403, `Compte banni : ${dbUser.bannedReason ?? "contactez le support"}`));
+      }
       req.user = { id: payload.sub, email: payload.email, role: payload.role as any, name: payload.name };
       return next();
     } catch {

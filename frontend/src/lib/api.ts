@@ -45,13 +45,19 @@ class ApiClient {
   // User
   user = {
     getProfile: () =>
-      this.request<{ user: import("@/types").User }>("/user/profile"),
+      this.request<{ user: import("@/types").User; oauthAccounts: { provider: string }[] }>("/user/profile"),
 
     updateProfile: (body: { name: string }) =>
       this.request<{ user: import("@/types").User }>("/user/profile", { method: "PUT", body: JSON.stringify(body) }),
 
     changePassword: (body: { currentPassword: string; newPassword: string }) =>
       this.request<{ message: string }>("/user/password", { method: "PUT", body: JSON.stringify(body) }),
+
+    changeEmail: (body: { email: string; password: string }) =>
+      this.request<{ user: import("@/types").User }>("/user/email", { method: "PUT", body: JSON.stringify(body) }),
+
+    unlinkConnection: (provider: string) =>
+      this.request<{ message: string }>(`/user/connections/${provider}`, { method: "DELETE" }),
   };
 
   // Admin

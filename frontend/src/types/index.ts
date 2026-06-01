@@ -6,6 +6,7 @@ export interface User {
   email: string;
   role: Role;
   emailVerified: boolean;
+  avatarUrl?: string | null;
   banned?: boolean;
   bannedReason?: string | null;
   createdAt?: string;
