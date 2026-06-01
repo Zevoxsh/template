@@ -157,7 +157,7 @@ function ChartCard({ title, data, color }: { title: string; data: { date: string
           <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
           <Tooltip
             contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
-            labelFormatter={fmtDate}
+            labelFormatter={(label: any) => typeof label === "string" ? fmtDate(label) : label}
           />
           <Area type="monotone" dataKey="count" stroke={color} strokeWidth={2} fill={`url(#grad-${title})`} />
         </AreaChart>
