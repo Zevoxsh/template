@@ -7,11 +7,12 @@ import { User } from "@/types";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/admin/page-header";
 import { formatDate } from "@/lib/utils";
+import { Mail, RotateCcw, Shield, ShieldOff, CheckCircle, Trash2 } from "lucide-react";
 
 const ROLE_CHIP: Record<string, string> = {
-  USER: "bg-slate-100 text-slate-600",
+  USER:      "bg-slate-100 text-slate-600",
   MODERATOR: "bg-amber-50 text-amber-700",
-  ADMIN: "bg-violet-50 text-violet-700",
+  ADMIN:     "bg-violet-50 text-violet-700",
 };
 
 export default function AdminUserDetailPage() {
@@ -32,8 +33,8 @@ export default function AdminUserDetailPage() {
 
   const update = async (data: Partial<User & { bannedReason?: string }>) => {
     try {
-      const { user: updated } = await api.admin.updateUser(id, data);
-      setUser(updated);
+      const { user: u } = await api.admin.updateUser(id, data);
+      setUser(u);
       flash("Mis à jour.");
     } catch (e: any) { flash(e.message, "error"); }
   };
@@ -48,11 +49,17 @@ export default function AdminUserDetailPage() {
     catch (e: any) { flash(e.message, "error"); }
   };
 
+  const deleteUser = async () => {
+    if (!confirm(`Supprimer ${user?.name} ? Action irréversible.`)) return;
+    try { await api.admin.deleteUser(id); router.push("/admin/users"); }
+    catch (e: any) { flash(e.message, "error"); }
+  };
+
   if (loading) return <p className="text-sm text-slate-400 py-8">Chargement…</p>;
   if (!user) return <p className="text-sm text-red-600 py-8">Utilisateur introuvable.</p>;
 
   return (
-    <div className="max-w-xl space-y-5">
+    <div className="space-y-5">
       <PageHeader
         title={user.name}
         description={user.email}
@@ -65,111 +72,159 @@ export default function AdminUserDetailPage() {
         </div>
       )}
 
-      {/* Infos */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Informations</p>
-        </div>
-        <div className="px-5 divide-y divide-slate-100">
-          <Row label="ID"><span className="font-mono text-xs text-slate-500">{user.id}</span></Row>
-          <Row label="Email"><span className="text-sm text-slate-700">{user.email}</span></Row>
-          <Row label="Rôle">
-            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${ROLE_CHIP[user.role] ?? "bg-slate-100 text-slate-600"}`}>
-              {user.role}
-            </span>
-          </Row>
-          <Row label="Email vérifié">
-            {user.emailVerified
-              ? <span className="text-xs font-medium text-green-600">✓ Vérifié</span>
-              : <span className="text-xs font-medium text-amber-600">⚠ Non vérifié</span>}
-          </Row>
-          <Row label="Statut">
-            {user.banned
-              ? <span className="text-xs font-medium text-red-600">Banni — {user.bannedReason ?? "sans raison"}</span>
-              : <span className="text-xs font-medium text-green-600">Actif</span>}
-          </Row>
-          {user.createdAt && <Row label="Inscription"><span className="text-sm text-slate-500">{formatDate(user.createdAt)}</span></Row>}
-        </div>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-      {/* Rôle */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Changer le rôle</p>
-        </div>
-        <div className="px-5 py-4 flex gap-2 flex-wrap">
-          {["USER", "MODERATOR", "ADMIN"].map((r) => (
-            <Button
-              key={r}
-              size="sm"
-              variant={user.role === r ? "primary" : "outline"}
-              onClick={() => update({ role: r as any })}
-            >
-              {r}
-            </Button>
-          ))}
-        </div>
-      </div>
+        {/* Left: infos + rôle */}
+        <div className="lg:col-span-1 space-y-5">
+          {/* Avatar + statut */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex items-center gap-4">
+            <div className="h-14 w-14 rounded-full bg-indigo-100 text-indigo-700 text-xl font-bold flex items-center justify-center shrink-0">
+              {user.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-900 truncate">{user.name}</p>
+              <p className="text-sm text-slate-400 truncate">{user.email}</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_CHIP[user.role] ?? "bg-slate-100 text-slate-600"}`}>
+                  {user.role}
+                </span>
+                {user.banned && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700">Banni</span>}
+                {!user.emailVerified && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Non vérifié</span>}
+              </div>
+            </div>
+          </div>
 
-      {/* Actions */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</p>
+          {/* Infos détail */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Détails</p>
+            </div>
+            <div className="px-5 divide-y divide-slate-50">
+              <InfoRow label="ID"><code className="text-xs text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">{user.id}</code></InfoRow>
+              <InfoRow label="Inscription">{user.createdAt ? formatDate(user.createdAt) : "—"}</InfoRow>
+              <InfoRow label="Email">
+                {user.emailVerified
+                  ? <span className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5" /> Vérifié</span>
+                  : <span className="text-xs text-amber-600 font-medium">Non vérifié</span>}
+              </InfoRow>
+              {user.banned && user.bannedReason && (
+                <InfoRow label="Raison ban"><span className="text-xs text-red-600">{user.bannedReason}</span></InfoRow>
+              )}
+            </div>
+          </div>
+
+          {/* Rôle */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Rôle</p>
+            </div>
+            <div className="p-3 flex flex-col gap-1.5">
+              {(["USER", "MODERATOR", "ADMIN"] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => update({ role: r })}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
+                    user.role === r
+                      ? "bg-indigo-50 text-indigo-700 font-semibold"
+                      : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <Shield className="h-3.5 w-3.5 shrink-0" />
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="px-5 py-4 space-y-3">
-          <ActionRow
-            label="Réinitialiser le mot de passe"
-            description="Envoie un email de réinitialisation à l'utilisateur"
-            action={<Button size="sm" variant="outline" onClick={resetPassword}>Envoyer</Button>}
-          />
-          {!user.emailVerified && (
-            <ActionRow
-              label="Renvoyer la vérification email"
-              description="Envoie un nouvel email de vérification"
-              action={<Button size="sm" variant="outline" onClick={sendVerification}>Envoyer</Button>}
-            />
-          )}
-          {!user.emailVerified && (
-            <ActionRow
-              label="Marquer l'email comme vérifié"
-              description="Valider manuellement sans envoyer d'email"
-              action={<Button size="sm" variant="secondary" onClick={() => update({ emailVerified: true })}>Valider</Button>}
-            />
-          )}
-          {user.banned ? (
-            <ActionRow
-              label="Débannir l'utilisateur"
-              description="Restaurer l'accès au compte"
-              action={<Button size="sm" variant="secondary" onClick={() => update({ banned: false })}>Débannir</Button>}
-            />
-          ) : (
-            <ActionRow
-              label="Bannir l'utilisateur"
-              description="Bloquer définitivement l'accès au compte"
-              action={<Button size="sm" variant="danger" onClick={() => update({ banned: true })}>Bannir</Button>}
-            />
-          )}
+
+        {/* Right: actions */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Sécurité */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sécurité</p>
+            </div>
+            <div className="divide-y divide-slate-50">
+              <ActionRow
+                icon={<Mail className="h-4 w-4 text-slate-400" />}
+                label="Réinitialiser le mot de passe"
+                description="Envoie un email de réinitialisation à l'utilisateur"
+                action={<Button size="sm" variant="outline" onClick={resetPassword}>Envoyer l'email</Button>}
+              />
+              {!user.emailVerified && (
+                <>
+                  <ActionRow
+                    icon={<Mail className="h-4 w-4 text-slate-400" />}
+                    label="Renvoyer la vérification email"
+                    description="Envoie un nouvel email de confirmation"
+                    action={<Button size="sm" variant="outline" onClick={sendVerification}>Envoyer</Button>}
+                  />
+                  <ActionRow
+                    icon={<CheckCircle className="h-4 w-4 text-green-500" />}
+                    label="Valider l'email manuellement"
+                    description="Marquer l'email comme vérifié sans envoyer d'email"
+                    action={<Button size="sm" variant="secondary" onClick={() => update({ emailVerified: true })}>Valider</Button>}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Modération */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Modération</p>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {user.banned ? (
+                <ActionRow
+                  icon={<CheckCircle className="h-4 w-4 text-green-500" />}
+                  label="Débannir l'utilisateur"
+                  description="Restaurer l'accès complet au compte"
+                  action={<Button size="sm" variant="secondary" onClick={() => update({ banned: false })}>Débannir</Button>}
+                />
+              ) : (
+                <ActionRow
+                  icon={<ShieldOff className="h-4 w-4 text-amber-500" />}
+                  label="Bannir l'utilisateur"
+                  description="Bloquer l'accès au compte immédiatement"
+                  action={<Button size="sm" variant="danger" onClick={() => update({ banned: true })}>Bannir</Button>}
+                />
+              )}
+              <ActionRow
+                icon={<Trash2 className="h-4 w-4 text-red-400" />}
+                label="Supprimer le compte"
+                description="Suppression définitive de toutes les données"
+                action={<Button size="sm" variant="danger" onClick={deleteUser}>Supprimer</Button>}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-3">
-      <span className="text-xs font-medium text-slate-500 w-28 shrink-0">{label}</span>
-      {children}
+    <div className="flex items-center justify-between py-2.5 gap-4">
+      <span className="text-xs font-medium text-slate-400 shrink-0">{label}</span>
+      <span className="text-sm text-slate-700 text-right">{children}</span>
     </div>
   );
 }
 
-function ActionRow({ label, description, action }: { label: string; description: string; action: React.ReactNode }) {
+function ActionRow({ icon, label, description, action }: {
+  icon: React.ReactNode; label: string; description: string; action: React.ReactNode;
+}) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2 border-b border-slate-50 last:border-0">
-      <div>
-        <p className="text-sm font-medium text-slate-800">{label}</p>
-        <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+    <div className="flex items-center justify-between gap-6 px-5 py-4">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 shrink-0">{icon}</div>
+        <div>
+          <p className="text-sm font-medium text-slate-800">{label}</p>
+          <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+        </div>
       </div>
       <div className="shrink-0">{action}</div>
     </div>
