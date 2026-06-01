@@ -8,69 +8,85 @@ import { api } from "@/lib/api";
 import { useAuthContext } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Camera, Trash2, Check, X, Link2, Link2Off } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Camera, Check, Link2, Link2Off, ShieldCheck,
+  User, Lock, KeyRound, AlertCircle, CalendarDays,
+} from "lucide-react";
 
-// ─── Schemas ────────────────────────────────────────
-const nameSchema = z.object({ name: z.string().min(2, "Minimum 2 caractères") });
+// ─── Schemas ────────────────────────────────────────────────────────────────
+const nameSchema = z.object({ name: z.string().min(2, "Min. 2 caractères") });
 const emailSchema = z.object({
   email: z.string().email("Email invalide"),
-  password: z.string().min(1, "Mot de passe requis"),
+  password: z.string().min(1, "Requis"),
 });
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Requis"),
-  newPassword: z.string().min(8, "Minimum 8 caractères")
-    .regex(/[A-Z]/, "Doit contenir une majuscule")
-    .regex(/[0-9]/, "Doit contenir un chiffre"),
-  confirmPassword: z.string(),
-}).refine((d) => d.newPassword === d.confirmPassword, {
-  path: ["confirmPassword"], message: "Ne correspond pas",
-});
+  newPassword: z.string().min(8).regex(/[A-Z]/).regex(/[0-9]/),
+  confirm: z.string(),
+}).refine((d) => d.newPassword === d.confirm, { path: ["confirm"], message: "Ne correspond pas" });
 
 type NameData = z.infer<typeof nameSchema>;
 type EmailData = z.infer<typeof emailSchema>;
 type PasswordData = z.infer<typeof passwordSchema>;
 
-// ─── Flash banner ────────────────────────────────────
-function Flash({ msg }: { msg: { type: "success" | "error"; text: string } | null }) {
-  if (!msg) return null;
-  return (
-    <p className={`text-xs font-medium ${msg.type === "success" ? "text-green-600" : "text-red-600"}`}>
-      {msg.type === "success" ? "✓ " : "✗ "}{msg.text}
-    </p>
-  );
-}
+// ─── Constants ──────────────────────────────────────────────────────────────
+const ROLE_LABEL: Record<string, string> = {
+  USER: "Utilisateur",
+  MODERATOR: "Modérateur",
+  ADMIN: "Administrateur",
+};
+const ROLE_COLORS: Record<string, string> = {
+  USER: "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
+  MODERATOR: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+  ADMIN: "bg-violet-50 text-violet-700 ring-1 ring-violet-200",
+};
+const PROVIDER_CONFIG: Record<string, { bg: string; text: string; abbr: string }> = {
+  google:    { bg: "bg-white border border-slate-200", text: "text-slate-800", abbr: "Go" },
+  github:    { bg: "bg-slate-900",                     text: "text-white",     abbr: "GH" },
+  discord:   { bg: "bg-indigo-500",                    text: "text-white",     abbr: "Di" },
+  microsoft: { bg: "bg-blue-600",                      text: "text-white",     abbr: "Ms" },
+};
 
-// ─── Section card ────────────────────────────────────
-function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+// ─── Sub-components ──────────────────────────────────────────────────────────
+function ProviderIcon({ name }: { name: string }) {
+  const s = PROVIDER_CONFIG[name] ?? { bg: "bg-slate-100", text: "text-slate-700", abbr: name.slice(0, 2).toUpperCase() };
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100">
-        <p className="text-sm font-semibold text-slate-900">{title}</p>
-        {description && <p className="text-xs text-slate-400 mt-0.5">{description}</p>}
-      </div>
-      <div className="px-6 py-5">{children}</div>
+    <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0", s.bg, s.text)}>
+      {s.abbr}
     </div>
   );
 }
 
-// ─── OAuth provider icons / labels ──────────────────
-const PROVIDERS: Record<string, { label: string; color: string; bg: string }> = {
-  google:    { label: "Google",    color: "text-red-600",    bg: "bg-red-50" },
-  github:    { label: "GitHub",    color: "text-slate-800",  bg: "bg-slate-100" },
-  discord:   { label: "Discord",   color: "text-indigo-600", bg: "bg-indigo-50" },
-  microsoft: { label: "Microsoft", color: "text-blue-600",   bg: "bg-blue-50" },
-};
-
-function ProviderIcon({ name }: { name: string }) {
-  const p = PROVIDERS[name];
+function Toast({ type, msg }: { type: "success" | "error"; msg: string }) {
   return (
-    <span className={`h-9 w-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${p?.bg ?? "bg-slate-100"} ${p?.color ?? "text-slate-600"}`}>
-      {(p?.label ?? name)[0].toUpperCase()}
-    </span>
+    <div className={cn(
+      "flex items-center gap-2 text-sm px-3 py-2 rounded-lg",
+      type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
+    )}>
+      {type === "success"
+        ? <Check className="h-4 w-4 shrink-0" />
+        : <AlertCircle className="h-4 w-4 shrink-0" />}
+      {msg}
+    </div>
   );
 }
 
-// ─── Main page ───────────────────────────────────────
+function SectionHeader({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description?: string }) {
+  return (
+    <div className="flex items-start gap-3 mb-6">
+      <div className="h-9 w-9 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+        <Icon className="h-4 w-4 text-indigo-600" />
+      </div>
+      <div>
+        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+        {description && <p className="text-sm text-slate-500 mt-0.5">{description}</p>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main ────────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { user, refresh } = useAuthContext();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -81,262 +97,323 @@ export default function ProfilePage() {
 
   const [nameMsg, setNameMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [emailMsg, setEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [pwMsg, setPwMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [connMsg, setConnMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const flash = (setter: typeof setNameMsg, text: string, type: "success" | "error" = "success") => {
-    setter({ type, text });
-    setTimeout(() => setter(null), 3000);
+  const flash = (set: (v: { type: "success" | "error"; text: string } | null) => void, type: "success" | "error", text: string) => {
+    set({ type, text });
+    setTimeout(() => set(null), type === "success" ? 3000 : 4000);
   };
 
   useEffect(() => {
-    api.user.getProfile().then(({ user, oauthAccounts }) => {
-      setConnections(oauthAccounts ?? []);
-    });
-    fetch("/api/auth/providers").then((r) => r.json())
-      .then((d) => setAvailableProviders(d.oauth ?? [])).catch(() => {});
+    api.user.getProfile().then(({ oauthAccounts }) => setConnections(oauthAccounts ?? []));
+    fetch("/api/auth/providers").then(r => r.json())
+      .then(d => setAvailableProviders(d.oauth ?? [])).catch(() => {});
   }, []);
 
-  const nameForm = useForm<NameData>({
-    resolver: zodResolver(nameSchema),
-    defaultValues: { name: user?.name ?? "" },
-  });
+  const nameForm = useForm<NameData>({ resolver: zodResolver(nameSchema), defaultValues: { name: user?.name ?? "" } });
   const emailForm = useForm<EmailData>({ resolver: zodResolver(emailSchema), defaultValues: { email: user?.email ?? "" } });
-  const passwordForm = useForm<PasswordData>({ resolver: zodResolver(passwordSchema) });
+  const pwForm = useForm<PasswordData>({ resolver: zodResolver(passwordSchema) });
 
-  // Avatar
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarPreview(URL.createObjectURL(file));
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append("avatar", file);
-      const res = await fetch("/api/user/avatar", { method: "POST", body: form, credentials: "include" });
-      if (!res.ok) throw new Error("Upload failed");
+      const fd = new FormData();
+      fd.append("avatar", file);
+      const res = await fetch("/api/user/avatar", { method: "POST", body: fd, credentials: "include" });
+      if (!res.ok) throw new Error();
       await refresh();
-    } catch (e: any) {
-      setAvatarPreview(null);
-    } finally { setUploading(false); }
-  };
-
-  const removeAvatar = async () => {
-    await fetch("/api/user/avatar", { method: "DELETE", credentials: "include" });
-    setAvatarPreview(null);
-    await refresh();
+    } catch { setAvatarPreview(null); }
+    finally { setUploading(false); }
   };
 
   const avatar = avatarPreview ?? user?.avatarUrl;
-  const initials = user?.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) ?? "?";
+  const initials = user?.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) ?? "?";
 
-  // Name
-  const onName = async (data: NameData) => {
-    try {
-      await api.user.updateProfile(data);
-      await refresh();
-      flash(setNameMsg, "Nom mis à jour.");
-    } catch (e: any) { flash(setNameMsg, e.message, "error"); }
+  const onName = async (d: NameData) => {
+    try { await api.user.updateProfile(d); await refresh(); flash(setNameMsg, "success", "Nom mis à jour avec succès"); }
+    catch (e: any) { flash(setNameMsg, "error", e.message); }
   };
 
-  // Email
-  const onEmail = async (data: EmailData) => {
-    try {
-      await (api as any).user.changeEmail(data);
-      await refresh();
-      flash(setEmailMsg, "Email mis à jour.");
-    } catch (e: any) { flash(setEmailMsg, e.message, "error"); }
+  const onEmail = async (d: EmailData) => {
+    try { await api.user.changeEmail(d); await refresh(); flash(setEmailMsg, "success", "Email mis à jour avec succès"); }
+    catch (e: any) { flash(setEmailMsg, "error", e.message); }
   };
 
-  // Password
-  const onPassword = async (data: PasswordData) => {
+  const onPw = async (d: PasswordData) => {
     try {
-      await api.user.changePassword({ currentPassword: data.currentPassword, newPassword: data.newPassword });
-      passwordForm.reset();
-      flash(setPasswordMsg, "Mot de passe modifié.");
-    } catch (e: any) { flash(setPasswordMsg, e.message, "error"); }
+      await api.user.changePassword({ currentPassword: d.currentPassword, newPassword: d.newPassword });
+      pwForm.reset();
+      flash(setPwMsg, "success", "Mot de passe modifié avec succès");
+    } catch (e: any) { flash(setPwMsg, "error", e.message); }
   };
 
-  // Unlink
   const unlink = async (provider: string) => {
     try {
-      await (api as any).user.unlinkConnection(provider);
-      setConnections((c) => c.filter((x) => x.provider !== provider));
-      flash(setConnMsg, `${provider} déconnecté.`);
-    } catch (e: any) { flash(setConnMsg, e.message, "error"); }
+      await api.user.unlinkConnection(provider);
+      setConnections(c => c.filter(x => x.provider !== provider));
+      flash(setConnMsg, "success", "Compte déconnecté avec succès");
+    } catch (e: any) { flash(setConnMsg, "error", e.message); }
   };
 
-  return (
-    <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+  const allProviders = [...new Set([...Object.keys(PROVIDER_CONFIG), ...availableProviders.map(p => p.name)])];
 
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">Mon profil</h1>
-        <p className="text-xs text-slate-400 mt-0.5">Gérez vos informations personnelles et votre sécurité</p>
+  return (
+    <div className="flex-1 bg-slate-50">
+      {/* Page header */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <h1 className="text-xl font-bold text-slate-900">Mon profil</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Gérez vos informations personnelles et la sécurité de votre compte</p>
+        </div>
       </div>
 
-      {/* Avatar */}
-      <Section title="Photo de profil" description="JPG, PNG ou GIF — max 5 Mo">
-        <div className="flex items-center gap-5">
-          <div className="relative shrink-0">
-            {avatar ? (
-              <img src={avatar} alt="avatar" className="h-20 w-20 rounded-full object-cover border-2 border-slate-200" />
-            ) : (
-              <div className="h-20 w-20 rounded-full bg-indigo-100 text-indigo-700 text-2xl font-bold flex items-center justify-center border-2 border-slate-200">
-                {initials}
-              </div>
-            )}
-            {uploading && (
-              <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center">
-                <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              </div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                <Camera className="h-3.5 w-3.5 mr-1.5" />
-                {avatar ? "Changer" : "Ajouter une photo"}
-              </Button>
-              {avatar && (
-                <Button size="sm" variant="ghost" onClick={removeAvatar}>
-                  <Trash2 className="h-3.5 w-3.5 mr-1.5 text-red-500" />
-                  Supprimer
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-slate-400">Recommandé : photo carrée, min 200×200px</p>
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-        </div>
-      </Section>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
 
-      {/* Name */}
-      <Section title="Nom d'affichage">
-        <form onSubmit={nameForm.handleSubmit(onName)}>
-          <div className="flex items-start gap-3">
-            <div className="flex-1">
-              <Input
-                placeholder="Jean Dupont"
-                error={nameForm.formState.errors.name?.message}
-                {...nameForm.register("name")}
-              />
-            </div>
-            <Button type="submit" size="sm" loading={nameForm.formState.isSubmitting}>
-              <Check className="h-3.5 w-3.5 mr-1" /> Enregistrer
-            </Button>
-          </div>
-          <div className="mt-2"><Flash msg={nameMsg} /></div>
-        </form>
-      </Section>
+          {/* ── Left: Profile card ─────────────────────────────────────────── */}
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              {/* Banner */}
+              <div className="h-24 bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600" />
 
-      {/* Email */}
-      <Section title="Adresse email" description="Confirmez votre mot de passe pour changer d'email">
-        <form onSubmit={emailForm.handleSubmit(onEmail)} className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Nouvel email"
-              type="email"
-              placeholder="nouveau@email.com"
-              error={emailForm.formState.errors.email?.message}
-              {...emailForm.register("email")}
-            />
-            <Input
-              label="Mot de passe actuel"
-              type="password"
-              placeholder="••••••••"
-              error={emailForm.formState.errors.password?.message}
-              {...emailForm.register("password")}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Flash msg={emailMsg} />
-            <Button type="submit" size="sm" loading={emailForm.formState.isSubmitting} className="ml-auto">
-              <Check className="h-3.5 w-3.5 mr-1" /> Mettre à jour
-            </Button>
-          </div>
-        </form>
-      </Section>
+              <div className="px-5 pb-5">
+                {/* Avatar row */}
+                <div className="flex items-end justify-between -mt-10 mb-4">
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    className="group relative h-20 w-20 rounded-2xl overflow-hidden border-4 border-white shadow-md hover:shadow-lg transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  >
+                    {avatar ? (
+                      <img src={avatar} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full bg-gradient-to-br from-indigo-400 to-violet-500 text-white text-2xl font-bold flex items-center justify-center">
+                        {initials}
+                      </div>
+                    )}
+                    {uploading ? (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-all">
+                        <Camera className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    )}
+                  </button>
 
-      {/* Password */}
-      <Section title="Mot de passe" description="Minimum 8 caractères, une majuscule et un chiffre">
-        <form onSubmit={passwordForm.handleSubmit(onPassword)} className="space-y-3">
-          <Input
-            label="Mot de passe actuel"
-            type="password"
-            placeholder="••••••••"
-            error={passwordForm.formState.errors.currentPassword?.message}
-            {...passwordForm.register("currentPassword")}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Nouveau mot de passe"
-              type="password"
-              placeholder="••••••••"
-              error={passwordForm.formState.errors.newPassword?.message}
-              {...passwordForm.register("newPassword")}
-            />
-            <Input
-              label="Confirmer"
-              type="password"
-              placeholder="••••••••"
-              error={passwordForm.formState.errors.confirmPassword?.message}
-              {...passwordForm.register("confirmPassword")}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Flash msg={passwordMsg} />
-            <Button type="submit" size="sm" loading={passwordForm.formState.isSubmitting} className="ml-auto">
-              <Check className="h-3.5 w-3.5 mr-1" /> Modifier
-            </Button>
-          </div>
-        </form>
-      </Section>
-
-      {/* Connected accounts */}
-      <Section title="Comptes connectés" description="Connectez vos comptes pour vous connecter sans mot de passe">
-        <div className="space-y-2">
-          <Flash msg={connMsg} />
-
-          {/* All available + configured providers */}
-          {[...new Set([...Object.keys(PROVIDERS), ...availableProviders.map((p) => p.name)])].map((name) => {
-            const isLinked = connections.some((c) => c.provider === name);
-            const pInfo = PROVIDERS[name] ?? { label: name, color: "text-slate-600", bg: "bg-slate-100" };
-            const availableP = availableProviders.find((p) => p.name === name);
-            const isEnabled = !!availableP;
-
-            return (
-              <div key={name} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
-                <div className="flex items-center gap-3">
-                  <ProviderIcon name={name} />
-                  <div>
-                    <p className="text-sm font-medium text-slate-800">{availableP?.displayName ?? pInfo.label}</p>
-                    <p className="text-xs text-slate-400">
-                      {isLinked ? "Connecté" : isEnabled ? "Non connecté" : "Non configuré par l'admin"}
-                    </p>
-                  </div>
+                  <span className={cn("text-xs font-semibold px-2.5 py-1 rounded-full", ROLE_COLORS[user?.role ?? "USER"])}>
+                    {ROLE_LABEL[user?.role ?? "USER"]}
+                  </span>
                 </div>
-                {isLinked ? (
-                  <Button size="sm" variant="ghost" onClick={() => unlink(name)}>
-                    <Link2Off className="h-3.5 w-3.5 mr-1.5 text-slate-400" /> Déconnecter
-                  </Button>
-                ) : isEnabled ? (
-                  <a href={`/api/auth/oauth/${name}`}>
-                    <Button size="sm" variant="outline">
-                      <Link2 className="h-3.5 w-3.5 mr-1.5" /> Connecter
-                    </Button>
-                  </a>
-                ) : (
-                  <span className="text-xs text-slate-300 px-3">—</span>
-                )}
+
+                <h2 className="text-lg font-bold text-slate-900 leading-tight">{user?.name}</h2>
+                <p className="text-sm text-slate-500 mt-0.5 truncate">{user?.email}</p>
+
+                <div className="mt-4 pt-4 border-t border-slate-100 space-y-2.5">
+                  {user?.emailVerified && (
+                    <div className="flex items-center gap-2 text-xs text-green-600 font-medium">
+                      <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                      <span>Email vérifié</span>
+                    </div>
+                  )}
+                  {user?.createdAt && (
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        Membre depuis{" "}
+                        {new Date(user.createdAt).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+                      </span>
+                    </div>
+                  )}
+                  {connections.length > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <Link2 className="h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        {connections.length} compte{connections.length > 1 ? "s" : ""} connecté{connections.length > 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-            );
-          })}
+            </div>
+
+            {/* Security tip */}
+            <div className="bg-indigo-50 rounded-2xl border border-indigo-100 p-4">
+              <p className="text-xs font-semibold text-indigo-700 mb-1">Conseil sécurité</p>
+              <p className="text-xs text-indigo-600 leading-relaxed">
+                Utilisez un mot de passe unique d'au moins 12 caractères incluant majuscules, chiffres et symboles.
+              </p>
+            </div>
+
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+          </div>
+
+          {/* ── Right: Forms ───────────────────────────────────────────────── */}
+          <div className="space-y-5">
+
+            {/* Personal Info */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+              <SectionHeader
+                icon={User}
+                title="Informations personnelles"
+                description="Mettez à jour votre nom d'affichage et votre adresse email"
+              />
+
+              <div className="space-y-6">
+                <form onSubmit={nameForm.handleSubmit(onName)} className="space-y-3">
+                  <Input
+                    label="Nom d'affichage"
+                    placeholder="Jean Dupont"
+                    error={nameForm.formState.errors.name?.message}
+                    {...nameForm.register("name")}
+                  />
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    {nameMsg ? <Toast type={nameMsg.type} msg={nameMsg.text} /> : <span />}
+                    <Button type="submit" size="sm" loading={nameForm.formState.isSubmitting}>
+                      Enregistrer
+                    </Button>
+                  </div>
+                </form>
+
+                <div className="border-t border-slate-100" />
+
+                <form onSubmit={emailForm.handleSubmit(onEmail)} className="space-y-3">
+                  <Input
+                    label="Adresse email"
+                    type="email"
+                    placeholder="vous@exemple.com"
+                    error={emailForm.formState.errors.email?.message}
+                    {...emailForm.register("email")}
+                  />
+                  <Input
+                    label="Confirmer avec votre mot de passe"
+                    type="password"
+                    placeholder="Mot de passe actuel"
+                    error={emailForm.formState.errors.password?.message}
+                    {...emailForm.register("password")}
+                  />
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    {emailMsg ? <Toast type={emailMsg.type} msg={emailMsg.text} /> : <span />}
+                    <Button type="submit" size="sm" loading={emailForm.formState.isSubmitting}>
+                      Enregistrer
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            {/* Security */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+              <SectionHeader
+                icon={Lock}
+                title="Sécurité"
+                description="Modifiez votre mot de passe pour protéger votre compte"
+              />
+
+              <form onSubmit={pwForm.handleSubmit(onPw)} className="space-y-3">
+                <Input
+                  label="Mot de passe actuel"
+                  type="password"
+                  placeholder="••••••••"
+                  error={pwForm.formState.errors.currentPassword?.message}
+                  {...pwForm.register("currentPassword")}
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Nouveau mot de passe"
+                    type="password"
+                    placeholder="••••••••"
+                    error={pwForm.formState.errors.newPassword?.message}
+                    {...pwForm.register("newPassword")}
+                  />
+                  <Input
+                    label="Confirmer le mot de passe"
+                    type="password"
+                    placeholder="••••••••"
+                    error={pwForm.formState.errors.confirm?.message}
+                    {...pwForm.register("confirm")}
+                  />
+                </div>
+                <p className="text-xs text-slate-400">Min. 8 caractères, une majuscule et un chiffre requis</p>
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  {pwMsg ? <Toast type={pwMsg.type} msg={pwMsg.text} /> : <span />}
+                  <Button type="submit" size="sm" loading={pwForm.formState.isSubmitting}>
+                    Modifier le mot de passe
+                  </Button>
+                </div>
+              </form>
+            </div>
+
+            {/* Connected Accounts */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+              <SectionHeader
+                icon={KeyRound}
+                title="Comptes connectés"
+                description="Liez des services tiers pour vous connecter plus rapidement"
+              />
+
+              {connMsg && (
+                <div className="mb-4">
+                  <Toast type={connMsg.type} msg={connMsg.text} />
+                </div>
+              )}
+
+              <div className="space-y-2.5">
+                {allProviders.map(name => {
+                  const isLinked = connections.some(c => c.provider === name);
+                  const available = availableProviders.find(p => p.name === name);
+                  const label = available?.displayName ?? name.charAt(0).toUpperCase() + name.slice(1);
+
+                  return (
+                    <div
+                      key={name}
+                      className={cn(
+                        "flex items-center justify-between p-4 rounded-xl border transition-colors",
+                        isLinked
+                          ? "border-green-100 bg-green-50/40"
+                          : "border-slate-100 bg-slate-50/50"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <ProviderIcon name={name} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-800">{label}</p>
+                          <p className={cn("text-xs mt-0.5", isLinked ? "text-green-600 font-medium" : "text-slate-400")}>
+                            {isLinked ? "✓ Connecté" : available ? "Non connecté" : "Non disponible"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {isLinked ? (
+                        <Button size="sm" variant="outline" onClick={() => unlink(name)}>
+                          <Link2Off className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
+                          Déconnecter
+                        </Button>
+                      ) : available ? (
+                        <a href={`/api/auth/oauth/${name}`}>
+                          <Button size="sm" variant="secondary">
+                            <Link2 className="h-3.5 w-3.5 mr-1.5" />
+                            Connecter
+                          </Button>
+                        </a>
+                      ) : (
+                        <span className="text-xs text-slate-300 px-2">Non configuré</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
-      </Section>
+      </div>
     </div>
   );
 }
