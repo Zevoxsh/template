@@ -16,6 +16,7 @@ start:
 	make db-up
 	@sleep 3
 	cd backend && npx prisma migrate deploy
+	cd backend && npm run build
 	cd frontend && npm run build
 	@trap 'kill 0' SIGINT; \
 		(cd backend && npm run start) & \
