@@ -8,7 +8,7 @@ import { AuthRequest } from "../types";
 
 const SELECTS = {
   id: true, name: true, email: true, role: true,
-  emailVerified: true, avatarUrl: true, createdAt: true,
+  emailVerified: true, avatarUrl: true, avatarFlagged: true, createdAt: true,
 };
 
 export async function getProfile(req: AuthRequest, res: Response, next: NextFunction) {
@@ -93,7 +93,7 @@ export async function uploadAvatar(req: AuthRequest, res: Response, next: NextFu
 
     const user = await prisma.user.update({
       where: { id: req.user!.id },
-      data: { avatarUrl },
+      data: { avatarUrl, avatarFlagged: false },
       select: SELECTS,
     });
     res.json({ user });

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Shield, CheckCircle, Clock, ArrowRight } from "lucide-react";
+import { Shield, CheckCircle, Clock, ArrowRight, AlertTriangle } from "lucide-react";
 import { useAuthContext } from "@/context/auth-context";
 import { formatDate } from "@/lib/utils";
 
@@ -23,6 +23,20 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+      {user.avatarFlagged && (
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-800">Photo de profil retirée par un administrateur</p>
+            <p className="text-xs text-amber-700 mt-0.5">Votre photo de profil a été jugée inappropriée et supprimée. Veuillez en choisir une nouvelle.</p>
+          </div>
+          <Link href="/profile" className="text-xs font-medium text-amber-700 hover:text-amber-900 underline underline-offset-2 shrink-0 mt-0.5">
+            Mettre à jour
+          </Link>
+        </div>
+      )}
+
       <div>
         <h1 className="text-xl font-bold text-slate-900">Bonjour, {user.name.split(" ")[0]}</h1>
         <p className="text-sm text-slate-500 mt-0.5">

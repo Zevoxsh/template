@@ -1,3 +1,5 @@
+import path from "path";
+import fs from "fs";
 import crypto from "crypto";
 import { Response, NextFunction } from "express";
 import { prisma } from "../lib/prisma";
@@ -55,7 +57,7 @@ export async function listUsers(req: AuthRequest, res: Response, next: NextFunct
         orderBy: { createdAt: "desc" },
         select: {
           id: true, name: true, email: true, role: true,
-          emailVerified: true, banned: true, bannedReason: true, avatarUrl: true, createdAt: true,
+          emailVerified: true, banned: true, bannedReason: true, avatarUrl: true, avatarFlagged: true, createdAt: true,
         },
       }),
       prisma.user.count({ where }),
@@ -73,7 +75,7 @@ export async function getUser(req: AuthRequest, res: Response, next: NextFunctio
       where: { id: String(req.params.id) },
       select: {
         id: true, name: true, email: true, role: true,
-        emailVerified: true, banned: true, bannedReason: true, avatarUrl: true, createdAt: true, updatedAt: true,
+        emailVerified: true, banned: true, bannedReason: true, avatarUrl: true, avatarFlagged: true, createdAt: true, updatedAt: true,
       },
     });
     if (!user) throw new AppError(404, "User not found");
@@ -115,6 +117,26 @@ export async function updateUser(req: AuthRequest, res: Response, next: NextFunc
   } catch (err) {
     next(err);
   }
+}
+
+export async function resetUserAvatar(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const targetId = String(req.params.id);
+    const current = await prisma.user.findUnique({ where: { id: targetId }, select: { avatarUrl: true } });
+    if (!current) throw new AppError(404, "User not found");
+
+    if (current.avatarUrl) {
+      const filePath = path.join(process.cwd(), "uploads", "avatars", path.basename(current.avatarUrl));
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+
+    const user = await prisma.user.update({
+      where: { id: targetId },
+      data: { avatarUrl: null, avatarFlagged: true },
+      select: { id: true, name: true, email: true, role: true, emailVerified: true, banned: true, bannedReason: true, avatarUrl: true, avatarFlagged: true, createdAt: true, updatedAt: true },
+    });
+    res.json({ user });
+  } catch (err) { next(err); }
 }
 
 export async function deleteUser(req: AuthRequest, res: Response, next: NextFunction) {

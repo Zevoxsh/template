@@ -93,6 +93,9 @@ class ApiClient {
     sendEmailVerification: (id: string) =>
       this.request<{ message: string }>(`/admin/users/${id}/send-verification`, { method: "POST" }),
 
+    resetUserAvatar: (id: string) =>
+      this.request<{ user: import("@/types").User }>(`/admin/users/${id}/reset-avatar`, { method: "POST" }),
+
     getSettings: () =>
       this.request<{ settings: import("@/types").SiteSettings }>("/admin/settings"),
 

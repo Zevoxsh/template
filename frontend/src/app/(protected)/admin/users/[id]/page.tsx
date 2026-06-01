@@ -5,9 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { User } from "@/types";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { PageHeader } from "@/components/admin/page-header";
 import { formatDate } from "@/lib/utils";
-import { Mail, RotateCcw, Shield, ShieldOff, CheckCircle, Trash2 } from "lucide-react";
+import { Mail, RotateCcw, Shield, ShieldOff, CheckCircle, Trash2, ImageOff } from "lucide-react";
 
 const ROLE_CHIP: Record<string, string> = {
   USER:      "bg-slate-100 text-slate-600",
@@ -44,6 +45,15 @@ export default function AdminUserDetailPage() {
     catch (e: any) { flash(e.message, "error"); }
   };
 
+  const resetAvatar = async () => {
+    if (!confirm(`Supprimer la photo de profil de ${user?.name} et lui envoyer un avertissement ?`)) return;
+    try {
+      const { user: u } = await api.admin.resetUserAvatar(id);
+      setUser(u);
+      flash("Photo de profil supprimée — l'utilisateur sera averti.");
+    } catch (e: any) { flash(e.message, "error"); }
+  };
+
   const sendVerification = async () => {
     try { await api.admin.sendEmailVerification(id); flash("Email de vérification envoyé."); }
     catch (e: any) { flash(e.message, "error"); }
@@ -78,8 +88,11 @@ export default function AdminUserDetailPage() {
         <div className="lg:col-span-1 space-y-5">
           {/* Avatar + statut */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex items-center gap-4">
-            <div className="h-14 w-14 rounded-full bg-indigo-100 text-indigo-700 text-xl font-bold flex items-center justify-center shrink-0">
-              {user.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
+            <div className="relative shrink-0">
+              <UserAvatar name={user.name} email={user.email} avatarUrl={user.avatarUrl} size="md" className="h-14 w-14 text-xl" />
+              {user.avatarFlagged && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 bg-amber-400 rounded-full border-2 border-white" title="Photo signalée" />
+              )}
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-slate-900 truncate">{user.name}</p>
@@ -176,6 +189,17 @@ export default function AdminUserDetailPage() {
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Modération</p>
             </div>
             <div className="divide-y divide-slate-50">
+              <ActionRow
+                icon={<ImageOff className="h-4 w-4 text-amber-500" />}
+                label="Supprimer la photo de profil"
+                description={user.avatarFlagged ? "Photo déjà supprimée — avertissement actif" : "Retire la photo et avertit l'utilisateur"}
+                action={
+                  <Button size="sm" variant="outline" onClick={resetAvatar} disabled={!user.avatarUrl && user.avatarFlagged}>
+                    <ImageOff className="h-3.5 w-3.5 mr-1.5" />
+                    {user.avatarFlagged ? "Signalée" : "Retirer"}
+                  </Button>
+                }
+              />
               {user.banned ? (
                 <ActionRow
                   icon={<CheckCircle className="h-4 w-4 text-green-500" />}

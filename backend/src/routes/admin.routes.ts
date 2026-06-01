@@ -5,7 +5,7 @@ import { validate } from "../middleware/validate.middleware";
 import {
   getStats, listUsers, getUser, updateUser, deleteUser,
   createUser, sendPasswordReset, sendEmailVerification,
-  getSettings, updateSettings,
+  getSettings, updateSettings, resetUserAvatar,
 } from "../controllers/admin.controller";
 import { testSmtp } from "../lib/mail";
 import { updateUserSchema, updateSettingsSchema } from "../validations/admin.validation";
@@ -21,6 +21,7 @@ router.get("/users/:id", getUser);
 router.put("/users/:id", validate(updateUserSchema), updateUser);
 router.delete("/users/:id", deleteUser);
 router.post("/users/:id/reset-password", sendPasswordReset);
+router.post("/users/:id/reset-avatar", resetUserAvatar);
 router.post("/users/:id/send-verification", sendEmailVerification);
 router.get("/settings", getSettings);
 router.put("/settings", validate(updateSettingsSchema), updateSettings);
