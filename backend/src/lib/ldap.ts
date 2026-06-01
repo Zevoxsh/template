@@ -1,48 +1,65 @@
-import ldap from "ldapjs";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const ldap = require("ldapjs") as typeof import("ldapjs");
+
+interface LdapCfg {
+  host: string; port: number; bindDn: string; bindPassword: string;
+  searchBase: string; searchFilter: string; useTls: boolean;
+}
 
 export async function ldapAuthenticate(
-  config: { host: string; port: number; bindDn: string; bindPassword: string; searchBase: string; searchFilter: string; useTls: boolean },
+  config: LdapCfg,
   username: string,
-  password: string
+  password: string,
 ): Promise<{ dn: string; email?: string; name?: string }> {
   return new Promise((resolve, reject) => {
     const client = ldap.createClient({
       url: `${config.useTls ? "ldaps" : "ldap"}://${config.host}:${config.port}`,
-      tlsOptions: config.useTls ? { rejectUnauthorized: false } : undefined,
+      ...(config.useTls && { tlsOptions: { rejectUnauthorized: false } }),
     });
 
-    client.on("error", reject);
+    client.on("error", (e: Error) => reject(e));
 
-    client.bind(config.bindDn, config.bindPassword, (err) => {
+    client.bind(config.bindDn, config.bindPassword, (err: Error | null) => {
       if (err) { client.destroy(); return reject(new Error("LDAP bind failed")); }
 
       const filter = config.searchFilter.replace("{{username}}", username);
-      client.search(config.searchBase, { filter, scope: "sub", attributes: ["dn", "mail", "cn", "displayName"] }, (err, res) => {
-        if (err) { client.destroy(); return reject(err); }
 
-        let entry: { dn: string; email?: string; name?: string } | null = null;
+      client.search(
+        config.searchBase,
+        { filter, scope: "sub", attributes: ["dn", "mail", "cn", "displayName"] },
+        (err: Error | null, res: any) => {
+          if (err) { client.destroy(); return reject(err); }
 
-        res.on("searchEntry", (e) => {
-          const obj = e.pojo;
-          entry = {
-            dn: obj.objectName as string,
-            email: (obj.attributes.find((a) => a.type === "mail")?.values[0] as string) ?? undefined,
-            name: (obj.attributes.find((a) => a.type === "displayName" || a.type === "cn")?.values[0] as string) ?? undefined,
-          };
-        });
+          let found: { dn: string; email?: string; name?: string } | null = null;
 
-        res.on("error", (e) => { client.destroy(); reject(e); });
-
-        res.on("end", () => {
-          if (!entry) { client.destroy(); return reject(new Error("User not found in LDAP")); }
-
-          client.bind(entry.dn, password, (err) => {
-            client.destroy();
-            if (err) return reject(new Error("Invalid LDAP credentials"));
-            resolve(entry!);
+          res.on("searchEntry", (entry: any) => {
+            const obj = entry.pojo ?? entry.object;
+            const getAttr = (type: string): string | undefined => {
+              if (entry.pojo) {
+                return entry.pojo.attributes.find((a: any) => a.type === type)?.values[0];
+              }
+              return obj[type];
+            };
+            found = {
+              dn: entry.dn?.toString() ?? obj.dn,
+              email: getAttr("mail"),
+              name: getAttr("displayName") ?? getAttr("cn"),
+            };
           });
-        });
-      });
+
+          res.on("error", (e: Error) => { client.destroy(); reject(e); });
+
+          res.on("end", () => {
+            if (!found) { client.destroy(); return reject(new Error("User not found in LDAP")); }
+
+            client.bind((found as any).dn, password, (err: Error | null) => {
+              client.destroy();
+              if (err) return reject(new Error("Invalid LDAP credentials"));
+              resolve(found!);
+            });
+          });
+        },
+      );
     });
   });
 }

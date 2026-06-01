@@ -18,6 +18,9 @@ start:
 	$(MAKE) db-up
 	@echo "Waiting for PostgreSQL..."
 	@sleep 3
+	@echo "==> Installation des dépendances..."
+	cd backend && npm install
+	cd frontend && npm install
 	@echo "==> Migration DB..."
 	cd backend && npx prisma migrate dev --name auto
 	@echo "==> Génération client Prisma..."
