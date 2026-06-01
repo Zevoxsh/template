@@ -7,6 +7,13 @@ import { useState, useRef, useEffect } from "react";
 import { useAuthContext } from "@/context/auth-context";
 import { useSite } from "@/context/site-context";
 
+async function gravatarUrl(email: string): Promise<string> {
+  const encoded = new TextEncoder().encode(email.trim().toLowerCase());
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
+  const hex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return `https://www.gravatar.com/avatar/${hex}?s=56&d=mp`;
+}
+
 export function Navbar() {
   const { user, logout } = useAuthContext();
   const { siteName } = useSite();
@@ -14,6 +21,7 @@ export function Navbar() {
   const pathname = usePathname();
   const [dropOpen, setDropOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [gravatar, setGravatar] = useState<string | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,9 +32,14 @@ export function Navbar() {
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
+  useEffect(() => {
+    if (user?.email) gravatarUrl(user.email).then(setGravatar);
+  }, [user?.id]);
+
   const handleLogout = async () => { await logout(); router.push("/login"); };
 
   const initials = user?.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+  const avatarSrc = user?.avatarUrl ?? gravatar;
 
   const isAdmin = pathname.startsWith("/admin");
 
@@ -66,8 +79,8 @@ export function Navbar() {
             onClick={() => setDropOpen((o) => !o)}
             className="flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900 transition-colors px-2 py-1 rounded-lg hover:bg-slate-50"
           >
-            <span className="h-7 w-7 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">
-              {initials}
+            <span className="h-7 w-7 rounded-full overflow-hidden bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0">
+              {avatarSrc ? <img src={avatarSrc} alt="" className="h-full w-full object-cover" /> : initials}
             </span>
             <span className="font-medium max-w-[120px] truncate">{user?.name}</span>
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" />

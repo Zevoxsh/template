@@ -14,6 +14,15 @@ import {
   User, Lock, KeyRound, AlertCircle, CalendarDays,
 } from "lucide-react";
 
+// ─── Gravatar ────────────────────────────────────────────────────────────────
+async function gravatarUrl(email: string, size = 200): Promise<string> {
+  const normalized = email.trim().toLowerCase();
+  const encoded = new TextEncoder().encode(normalized);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
+  const hex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return `https://www.gravatar.com/avatar/${hex}?s=${size}&d=mp`;
+}
+
 // ─── Schemas ────────────────────────────────────────────────────────────────
 const nameSchema = z.object({ name: z.string().min(2, "Min. 2 caractères") });
 const emailSchema = z.object({
@@ -95,6 +104,7 @@ export default function ProfilePage() {
   const [connections, setConnections] = useState<{ provider: string }[]>([]);
   const [availableProviders, setAvailableProviders] = useState<{ name: string; displayName: string }[]>([]);
 
+  const [gravatar, setGravatar] = useState<string | null>(null);
   const [avatarErr, setAvatarErr] = useState<string | null>(null);
   const [nameMsg, setNameMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [emailMsg, setEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -116,11 +126,12 @@ export default function ProfilePage() {
   const emailForm = useForm<EmailData>({ resolver: zodResolver(emailSchema), defaultValues: { email: user?.email ?? "" } });
   const pwForm = useForm<PasswordData>({ resolver: zodResolver(passwordSchema) });
 
-  // Pre-fill forms once user data is loaded from the auth context
+  // Pre-fill forms and compute gravatar once user data is loaded
   useEffect(() => {
     if (!user) return;
     nameForm.reset({ name: user.name });
     emailForm.reset({ email: user.email });
+    gravatarUrl(user.email).then(setGravatar);
   }, [user?.id]);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,7 +157,7 @@ export default function ProfilePage() {
     } finally { setUploading(false); }
   };
 
-  const avatar = avatarPreview ?? user?.avatarUrl;
+  const avatar = avatarPreview ?? user?.avatarUrl ?? gravatar;
   const initials = user?.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) ?? "?";
 
   const onName = async (d: NameData) => {
