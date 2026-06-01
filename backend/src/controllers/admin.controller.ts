@@ -55,7 +55,7 @@ export async function listUsers(req: AuthRequest, res: Response, next: NextFunct
         orderBy: { createdAt: "desc" },
         select: {
           id: true, name: true, email: true, role: true,
-          emailVerified: true, banned: true, bannedReason: true, createdAt: true,
+          emailVerified: true, banned: true, bannedReason: true, avatarUrl: true, createdAt: true,
         },
       }),
       prisma.user.count({ where }),
@@ -73,7 +73,7 @@ export async function getUser(req: AuthRequest, res: Response, next: NextFunctio
       where: { id: String(req.params.id) },
       select: {
         id: true, name: true, email: true, role: true,
-        emailVerified: true, banned: true, bannedReason: true, createdAt: true, updatedAt: true,
+        emailVerified: true, banned: true, bannedReason: true, avatarUrl: true, createdAt: true, updatedAt: true,
       },
     });
     if (!user) throw new AppError(404, "User not found");

@@ -8,20 +8,12 @@ import { api } from "@/lib/api";
 import { useAuthContext } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 import {
   Camera, Check, Link2, Link2Off, ShieldCheck,
   User, Lock, KeyRound, AlertCircle, CalendarDays,
 } from "lucide-react";
-
-// ─── Gravatar ────────────────────────────────────────────────────────────────
-async function gravatarUrl(email: string, size = 200): Promise<string> {
-  const normalized = email.trim().toLowerCase();
-  const encoded = new TextEncoder().encode(normalized);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
-  const hex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
-  return `https://www.gravatar.com/avatar/${hex}?s=${size}&d=mp`;
-}
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 const nameSchema = z.object({ name: z.string().min(2, "Min. 2 caractères") });
@@ -104,7 +96,6 @@ export default function ProfilePage() {
   const [connections, setConnections] = useState<{ provider: string }[]>([]);
   const [availableProviders, setAvailableProviders] = useState<{ name: string; displayName: string }[]>([]);
 
-  const [gravatar, setGravatar] = useState<string | null>(null);
   const [avatarErr, setAvatarErr] = useState<string | null>(null);
   const [nameMsg, setNameMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [emailMsg, setEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -131,7 +122,6 @@ export default function ProfilePage() {
     if (!user) return;
     nameForm.reset({ name: user.name });
     emailForm.reset({ email: user.email });
-    gravatarUrl(user.email).then(setGravatar);
   }, [user?.id]);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,8 +147,7 @@ export default function ProfilePage() {
     } finally { setUploading(false); }
   };
 
-  const avatar = avatarPreview ?? user?.avatarUrl ?? gravatar;
-  const initials = user?.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) ?? "?";
+  const avatar = avatarPreview ?? user?.avatarUrl;
 
   const onName = async (d: NameData) => {
     try { await api.user.updateProfile(d); await refresh(); flash(setNameMsg, "success", "Nom mis à jour avec succès"); }
@@ -210,13 +199,10 @@ export default function ProfilePage() {
                     onClick={() => fileRef.current?.click()}
                     className="group relative h-20 w-20 rounded-2xl overflow-hidden border-4 border-white shadow-md hover:shadow-lg transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                   >
-                    {avatar ? (
-                      <img src={avatar} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="h-full w-full bg-gradient-to-br from-indigo-400 to-violet-500 text-white text-2xl font-bold flex items-center justify-center">
-                        {initials}
-                      </div>
-                    )}
+                    {avatar
+                      ? <img src={avatar} alt="" className="h-full w-full object-cover" />
+                      : user && <UserAvatar name={user.name} email={user.email} avatarUrl={null} size="lg" className="rounded-none w-full h-full" />
+                    }
                     {uploading ? (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                         <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">

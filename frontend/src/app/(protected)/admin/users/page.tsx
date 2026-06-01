@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/admin/page-header";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { formatDate } from "@/lib/utils";
 
 const ROLE_CHIP: Record<string, string> = {
@@ -115,9 +116,12 @@ export default function AdminUsersPage() {
               ) : data?.users.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50/60 transition-colors">
                   <td className="px-4 py-3">
-                    <Link href={`/admin/users/${u.id}`} className="hover:text-indigo-600 transition-colors">
-                      <p className="text-sm font-medium text-slate-900">{u.name}</p>
-                      <p className="text-xs text-slate-400">{u.email}</p>
+                    <Link href={`/admin/users/${u.id}`} className="flex items-center gap-3 hover:text-indigo-600 transition-colors">
+                      <UserAvatar name={u.name} email={u.email} avatarUrl={u.avatarUrl} size="sm" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{u.name}</p>
+                        <p className="text-xs text-slate-400">{u.email}</p>
+                      </div>
                     </Link>
                   </td>
                   <td className="px-4 py-3">
