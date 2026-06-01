@@ -22,7 +22,7 @@ export default function DashboardPage() {
   if (!user) return null;
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div>
         <h1 className="text-xl font-bold text-slate-900">Bonjour, {user.name.split(" ")[0]}</h1>
         <p className="text-sm text-slate-500 mt-0.5">
